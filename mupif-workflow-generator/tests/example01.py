@@ -1,56 +1,78 @@
+# import PyQt5
+# from PyQt5 import QtGui
+# from PyQt5 import QtCore
+from PyQt5 import QtWidgets
+
+import sys
+
+#
+sys.path.insert(0, "/home/user/Projects/mupif-workflow-generator/mupif-workflow-generator")
 import Block
-import collections
+import GraphWidget
+
 
 class ModelA(Block.ModelBlock):
     def __init__(self, workflow):
         Block.ModelBlock.__init__(self, workflow, None, "HeatSolver")
-        self.outputSlots = [Block.DataSlot(self, "temperatureField", "field")]
+        self.addDataSlot(Block.OutputDataSlot(self, "temperatureField", "field"))
 
-    def getInputSlots(self):
-        return []
-    def getOutputSlots(self):
-        return self.outputSlots
 
 class ModelB(Block.ModelBlock):
     def __init__(self, workflow):
-        Block.ModelBlock.__init__(self, workflow, None,"MechanicalSolver")
-        self.inputSlots = [Block.DataSlot(self, "temperatureField", "field")]
-        self.outputSlots = [Block.DataSlot(self, "DisplacementField", "field")]
+        Block.ModelBlock.__init__(self, workflow, None, "MechanicalSolver")
+        self.addDataSlot(Block.InputDataSlot(self, "temperatureField", "field"))
+        self.addDataSlot(Block.OutputDataSlot(self, "DisplacementField", "field"))
 
-
-    def getInputSlots(self):
-        return self.inputSlots
-    def getOutputSlots(self):
-        return self.outputSlots
 
 def printCode (code, level=-1):
-    if isinstance(code, basestring):
-        print ("%s%s"%('\t'*level, code))
+    if isinstance(code, str):
+        print ("%s%s" % ('\t'*level, code))
     else:
         for line in code:
-            printCode (line, level+1)
+            printCode(line, level+1)
 
 
 #
 # here we set up the workflow model directly
-# the other posibility is to create workflow model from file (json)
+# the other possibility is to create workflow model from file (json)
 # (not yet available)
 #
-workflow = Block.WorkflowBlock()
-model1 = ModelA(workflow)
-model2 = ModelB(workflow)
+def test():
+    app = QtWidgets.QApplication([])
+    graph = GraphWidget.GraphWidget()
+    graph.setGeometry(100, 100, 800, 600)
+    graph.show()
+
+    workflow = Block.WorkflowBlock()
+    model1 = ModelA(workflow)
+    model2 = ModelB(workflow)
+
+    timeloop = Block.TimeLoopBlock(workflow)
+
+    timeloop.addExecutionBlock(model1)
+    timeloop.addExecutionBlock(model2)
+    timeloop.setVariable("start_time", 0.0)
+    timeloop.setVariable("target_time", 1.0)
+    # workflow.dataLinks.append(Block.DataLink(model1.dataSlots[0], model2.dataSlots[0]))
+
+    workflow.addExecutionBlock(timeloop)
+    graph.addNode(workflow)
+    # model1.getDataSlotWithName("temperatureField").connectTo(model2.getDataSlotWithName("temperatureField"))
+
+    code = workflow.generateCode()
+
+    # print code
+    printCode(code)
+
+    # graph.registerNodeClass(Integer)
+    # nodeInt1 = Integer()
+    print(graph.scene.items())
+    for i in list(graph.scene.items()):
+        print(i.scene())
+    # graph.addNode(nodeInt1)
+
+    app.exec_()
 
 
-timeloop = Block.TimeLoopBlock(workflow)
-
-timeloop.blockList.append(model1)
-timeloop.blockList.append(model2)
-timeloop.setVariable("start_time", 0.0)
-timeloop.setVariable("target_time", 1.0)
-workflow.dataLinks.append(Block.DataLink(model1.outputSlots[0], model2.inputSlots[0]))
-
-workflow.blockList.append(timeloop)
-code = workflow.generateCode()
-
-#print code
-printCode(code)
+if __name__ == '__main__':
+    test()
