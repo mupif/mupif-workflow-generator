@@ -95,7 +95,7 @@ class DataSlot (QtWidgets.QGraphicsItem):
     """
     Class describing input/output parameter of block
     """
-    def __init__(self, owner, name, type, optional=False,parent=None, **kwargs):
+    def __init__(self, owner, name, type, optional=False, parent=None, **kwargs):
         QtWidgets.QGraphicsItem.__init__(self, parent)
         self.name = name
         self.owner = owner
@@ -382,6 +382,7 @@ class DataSlot (QtWidgets.QGraphicsItem):
             if ok_pressed:
                 self.name = new_name
                 self.displayName = self.name
+                # self.owner.updateSizeForChildren()
 
         renameSlotAction = subMenu.addAction("Rename")
         renameSlotAction.triggered.connect(_rename)
@@ -481,7 +482,7 @@ class DataLink (QtWidgets.QGraphicsPathItem):
         self.setAcceptHoverEvents(True)
 
     def __str__(self):
-        return "Datalink (%s -> %s)"%(self.source, self.target)
+        return "Datalink (%s -> %s)" % (self.source, self.target)
 
     def __repr__(self):
         return self.__str__()
@@ -646,10 +647,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     def minimumWidth(self):
         return self.w
 
-    def minimumHeight (self):
+    def minimumHeight(self):
         return self.h
 
-    def sizeHint (self, which, constraint):
+    def sizeHint(self, which, constraint):
         return QtCore.QSizeF(self.w, self.h)
 
     def updateSizeForChildren(self):
@@ -677,7 +678,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         adjustWidth()
         adjustHeight()
-        print (self, "height:", self.h, "width:", self.w)
+        print(self, "height:", self.h, "width:", self.w)
 
     def addHeader(self, header):
         """Assign the given header and adjust the Node's size for it."""
@@ -704,7 +705,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         children = [c for c in self.childItems()]
         yOffset = sum([c.boundingRect().height() + self.margin for c in children])
-        print (yOffset)
+        print(yOffset)
         xOffset = self.margin / 2
 
         slot.setParentItem(self)
@@ -738,7 +739,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         # The bounding box is only as high as the header (we do this
         # to limit the area that is drag-enabled). Accommodate for that.
         bbox = self.boundingRect()
-        print (self, bbox)
+        print(self, bbox)
         painter.drawRoundedRect(self.x,
                                 self.y,
                                 self.w, #bbox.width(),
@@ -794,11 +795,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.addAddSlotMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
-    # def mouseDoubleClickEvent(self, QGraphicsSceneMouseEvent):
-    #     temp = QtWidgets.QInputDialog()
-    #     new_name, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Change name of the block", "New name")
-    #     if ok_pressed:
-    #         self.name = new_name
 
 #
 # Execution blocks: Implementation
@@ -924,6 +920,55 @@ class WorkflowBlock(SequentialBlock):
             icode=i
             whilecode.append(icode) # indented sequential code
 
+    def addAddBlockMenuActions(self, menu):
+        subMenu = menu.addMenu("Add")
+
+        def _addTimeLoopBlock():
+            new_time_loop_block = TimeLoopBlock(self)
+            self.addExecutionBlock(new_time_loop_block)
+
+        addTimeLoopBlockAction = subMenu.addAction("TimeLoop Block")
+        addTimeLoopBlockAction.triggered.connect(_addTimeLoopBlock)
+
+        def _addVariableBlock():
+            new_block = VariableBlock(self.workflow)
+            self.addExecutionBlock(new_block)
+
+        addVariableBlockAction = subMenu.addAction("Variable")
+        addVariableBlockAction.triggered.connect(_addVariableBlock)
+
+    def contextMenuEvent(self, event):
+        temp = QtWidgets.QWidget()
+        menu = QtWidgets.QMenu(temp)
+        self.addAddBlockMenuActions(menu)
+        menu.exec_(QtGui.QCursor.pos())
+
+
+class VariableBlock(ExecutionBlock):
+    def __init__(self, workflow):
+        ExecutionBlock.__init__(self, workflow)
+        self.value = 0.
+        self.addDataSlot(OutputDataSlot(self, "%le" % self.value, float, False))
+
+    def addVariableBlockMenuActions(self, menu):
+        subMenu = menu.addMenu("Modify")
+
+        def _changeValue():
+            temp = QtWidgets.QInputDialog()
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter new value", "New value")
+            if ok_pressed:
+                self.value = float(new_value)
+                self.getDataSlots()[0].displayName = "%le" % self.value
+
+        changeValueAction = subMenu.addAction("Change value")
+        changeValueAction.triggered.connect(_changeValue)
+
+    def contextMenuEvent(self, event):
+        temp = QtWidgets.QWidget()
+        menu = QtWidgets.QMenu(temp)
+        self.addVariableBlockMenuActions(menu)
+        menu.exec_(QtGui.QCursor.pos())
+
 
 class ModelBlock(ExecutionBlock):
     def __init__(self, workflow, model, model_name):
@@ -946,6 +991,8 @@ class TimeLoopBlock (SequentialBlock):
         SequentialBlock.__init__(self, workflow)
         self.addDataSlot(InputDataSlot(self, "target_time", float, False))
         self.addDataSlot(InputDataSlot(self, "start_time", float, False))
+        self.setVariable("start_time", 0.0)
+        self.setVariable("target_time", 1.0)
 
     def setVariable(self, name, value):
         self.variables[name] = value
@@ -967,3 +1014,23 @@ class TimeLoopBlock (SequentialBlock):
         code.append("")
 
         return code
+
+    def addAddBlockMenuActions(self, menu):
+        subMenu = menu.addMenu("Add")
+
+        def _addModelBlock():
+            new_block = ModelBlock(self.workflow, self, "New Model")
+            self.addExecutionBlock(new_block)
+
+        addModelBlockAction = subMenu.addAction("Model Block")
+        addModelBlockAction.triggered.connect(_addModelBlock)
+
+
+
+
+
+    def contextMenuEvent(self, event):
+        temp = QtWidgets.QWidget()
+        menu = QtWidgets.QMenu(temp)
+        self.addAddBlockMenuActions(menu)
+        menu.exec_(QtGui.QCursor.pos())

@@ -14,14 +14,11 @@ import GraphWidget
 class ModelA(Block.ModelBlock):
     def __init__(self, workflow):
         Block.ModelBlock.__init__(self, workflow, None, "HeatSolver")
-        self.addDataSlot(Block.OutputDataSlot(self, "temperatureField", "field"))
 
 
 class ModelB(Block.ModelBlock):
     def __init__(self, workflow):
         Block.ModelBlock.__init__(self, workflow, None, "MechanicalSolver")
-        self.addDataSlot(Block.InputDataSlot(self, "temperatureField", "field"))
-        self.addDataSlot(Block.OutputDataSlot(self, "DisplacementField", "field"))
 
 
 def printCode (code, level=-1):
@@ -43,29 +40,7 @@ def test():
     graph.setGeometry(100, 100, 800, 600)
     graph.show()
 
-    workflow = Block.WorkflowBlock()
-    model1 = ModelA(workflow)
-    model2 = ModelB(workflow)
 
-    timeloop = Block.TimeLoopBlock(workflow)
-
-    timeloop.addExecutionBlock(model1)
-    timeloop.addExecutionBlock(model2)
-    timeloop.setVariable("start_time", 0.0)
-    timeloop.setVariable("target_time", 1.0)
-    # workflow.dataLinks.append(Block.DataLink(model1.dataSlots[0], model2.dataSlots[0]))
-
-    workflow.addExecutionBlock(timeloop)
-    graph.addNode(workflow)
-    # model1.getDataSlotWithName("temperatureField").connectTo(model2.getDataSlotWithName("temperatureField"))
-
-    code = workflow.generateCode()
-
-    # print code
-    printCode(code)
-
-    # graph.registerNodeClass(Integer)
-    # nodeInt1 = Integer()
     print(graph.scene.items())
     for i in list(graph.scene.items()):
         print(i.scene())

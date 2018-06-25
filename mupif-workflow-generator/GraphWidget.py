@@ -146,14 +146,17 @@ class GraphWidget (QtWidgets.QWidget):
         subMenu.addSeparator()
 
         def _layoutScene():
-            autoLayout(self.scene)
+            # self.layout()
+            # QtWidgets.QWidget.setLayout(self.layout())
+            # autoLayout(self.scene)
             self.view.redrawEdges()
 
         layoutSceneAction = subMenu.addAction("Auto Layout")
         layoutSceneAction.triggered.connect(_layoutScene)
 
         def _addWorkflowBlock():
-            self.variab = Block.WorkflowBlock()
+            new_workflow = Block.WorkflowBlock()
+            self.addNode(new_workflow)
 
         addWorkflowBlockAction = subMenu.addAction("Add WorkflowBlock")
         addWorkflowBlockAction.triggered.connect(_addWorkflowBlock)
