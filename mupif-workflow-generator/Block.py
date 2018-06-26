@@ -549,6 +549,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     """
     Abstract class representing execution block
     """
+    list_of_models = []
+
     def __init__(self, workflow, **kwargs):
         QtWidgets.QGraphicsWidget.__init__(self, kwargs.get("parent", None))
         # self.blockList = [] #blocks slots kept in self.childItems()
@@ -1018,19 +1020,36 @@ class TimeLoopBlock (SequentialBlock):
     def addAddBlockMenuActions(self, menu):
         subMenu = menu.addMenu("Add")
 
-        def _addModelBlock():
-            new_block = ModelBlock(self.workflow, self, "New Model")
+        def _addModelBlock0():
+            new_block = ExecutionBlock.list_of_models[0](self.workflow)
             self.addExecutionBlock(new_block)
 
-        addModelBlockAction = subMenu.addAction("Model Block")
-        addModelBlockAction.triggered.connect(_addModelBlock)
+        def _addModelBlock1():
+            new_block = ExecutionBlock.list_of_models[1](self.workflow)
+            self.addExecutionBlock(new_block)
 
+        def _addModelBlock2():
+            new_block = ExecutionBlock.list_of_models[2](self.workflow)
+            self.addExecutionBlock(new_block)
 
+        def _addModelBlock3():
+            new_block = ExecutionBlock.list_of_models[3](self.workflow)
+            self.addExecutionBlock(new_block)
 
+        def _addModelBlock4():
+            new_block = ExecutionBlock.list_of_models[4](self.workflow)
+            self.addExecutionBlock(new_block)
 
+        functions = [_addModelBlock0, _addModelBlock1, _addModelBlock2, _addModelBlock3, _addModelBlock4]
+        addModelBlockActions = []
+        for model_id in range(0, len(ExecutionBlock.list_of_models)):
+            addModelBlockActions.append(subMenu.addAction(ExecutionBlock.list_of_models[model_id].__name__))
+            addModelBlockActions[model_id].triggered.connect(functions[model_id])
 
     def contextMenuEvent(self, event):
         temp = QtWidgets.QWidget()
         menu = QtWidgets.QMenu(temp)
         self.addAddBlockMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
+
+
