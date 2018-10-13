@@ -191,9 +191,6 @@ class TimeLoopBlock(SequentialBlock):
                 return connected_block.getValue()
         return 0
 
-    def setVariable(self, name, value):
-        self.variables[name] = value
-
     def generateCode(self):
         code = ["time=%f" % self.getStartTime(),
                 "while (time<=%f):" % self.getTargetTime()]

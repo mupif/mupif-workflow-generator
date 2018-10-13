@@ -148,7 +148,7 @@ class GraphWidget (QtWidgets.QWidget):
             # self.layout()
             # QtWidgets.QWidget.setLayout(self.layout())
             # autoLayout(self.scene)
-            self.view.redrawEdges()
+            self.view.redrawDataLinks()
 
         layoutSceneAction = subMenu.addAction("Auto Layout")
         layoutSceneAction.triggered.connect(_layoutScene)
@@ -167,26 +167,6 @@ class GraphWidget (QtWidgets.QWidget):
 
         showAllElements = subMenu.addAction("Show all elements")
         showAllElements.triggered.connect(_showAllElements)
-
-    # def addNodesMenuActions(self, menu):
-    #     subMenu = menu.addMenu("Nodes")
-    #
-    #     def _passNode():
-    #         pass
-    #
-    #     nid = 0
-    #     for node in self.scene.items():
-    #         nid += 1
-    #         someAction = subMenu.addAction("Node_%d" % nid)
-    #         someAction.triggered.connect(_passNode)
-    #
-    #     for cls in self.nodeClasses:
-    #         action = subMenu.addAction(cls.__name__)
-    #
-    #         def actionf(cc):
-    #             return lambda: self._createNode(cc)
-    #         print ("Adding action", self, cls.__name__, cls)
-    #         action.triggered.connect(actionf(cls))
 
     def contextMenuEvent(self, event):
         """Show a menu to create registered Nodes."""

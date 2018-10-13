@@ -1,1 +1,1 @@
-__all__ = ['Block', 'exceptions', 'GraphView', 'GraphWidget', 'Header', 'helpers', 'view']
+__all__ = ['Block', 'exceptions', 'GraphView', 'GraphWidget', 'Header', 'helpers']

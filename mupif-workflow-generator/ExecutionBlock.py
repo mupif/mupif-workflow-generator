@@ -50,8 +50,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def __init__(self, workflow, **kwargs):
         QtWidgets.QGraphicsWidget.__init__(self, kwargs.get("parent", None))
-        # self.blockList = [] #blocks slots kept in self.childItems()
-        self.variables = {}
+        # self.blockList = [] blocks kept in self.childItems()
         # self.dataSlots = [] data slots kept in self.childItems()
         self.workflow = workflow
         self.name = kwargs.get("name", "ExecutionBlock")

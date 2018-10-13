@@ -2,8 +2,8 @@
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
+import DataLink
 import Block
-# from edge import Edge
 
 
 CURRENT_ZOOM = 1.0
@@ -37,27 +37,31 @@ class GraphView(QtWidgets.QGraphicsView):
 
     def nodes(self):
         """Return all Nodes in the scene."""
-        return [i for i in self.scene().items() if isinstance(i, Block.ExecutionBlock) or isinstance(i, Edge)]
+        return [i for i in self.scene().items() if isinstance(i, Block.ExecutionBlock) or isinstance(i, DataLink.DataLink)]
 
-    def edges(self):
+    def getExecutionBlocks(self):
+        """Return all Nodes in the scene."""
+        return [i for i in self.scene().items() if isinstance(i, Block.ExecutionBlock)]
+
+    def getDataLinks(self):
         """Return all Edges in the scene."""
-        return [i for i in self.scene().items() if isinstance(i, Edge)]
+        return [i for i in self.scene().items() if isinstance(i, DataLink.DataLink)]
 
-    def redrawEdges(self):
+    def redrawDataLinks(self):
         """Trigger a repaint of all Edges in the scene."""
-        for edge in self.edges():
+        for edge in self.getDataLinks():
             edge.updatePath()
 
     def keyPressEvent(self, event):
         """Trigger a redraw of Edges to update their color."""
         if event.key() == ALTERNATE_MODE_KEY:
-            self.redrawEdges()
+            self.redrawDataLinks()
         super(GraphView, self).keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
         """Trigger a redraw of Edges to update their color."""
         if event.key() == ALTERNATE_MODE_KEY:
-            self.redrawEdges()
+            self.redrawDataLinks()
         super(GraphView, self).keyReleaseEvent(event)
 
     def mousePressEvent(self, event):
