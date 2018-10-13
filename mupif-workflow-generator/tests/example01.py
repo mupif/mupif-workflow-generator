@@ -1,7 +1,5 @@
-# import PyQt5
-# from PyQt5 import QtGui
-# from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+from Block import *
+import GraphWidget
 
 import sys
 
@@ -11,17 +9,17 @@ import Block
 import GraphWidget
 
 
-class ModelA(Block.ModelBlock):
+class ModelA(ModelBlock):
     def __init__(self, workflow):
-        Block.ModelBlock.__init__(self, workflow, None, "HeatSolver")
-        self.addDataSlot(Block.OutputDataSlot(self, "temperatureField", "field"))
+        ModelBlock.__init__(self, workflow, None, "HeatSolver")
+        self.addDataSlot(OutputDataSlot(self, "temperatureField", "field"))
 
 
-class ModelB(Block.ModelBlock):
+class ModelB(ModelBlock):
     def __init__(self, workflow):
-        Block.ModelBlock.__init__(self, workflow, None, "MechanicalSolver")
-        self.addDataSlot(Block.InputDataSlot(self, "temperatureField", "field"))
-        self.addDataSlot(Block.OutputDataSlot(self, "DisplacementField", "field"))
+        ModelBlock.__init__(self, workflow, None, "MechanicalSolver")
+        self.addDataSlot(InputDataSlot(self, "temperatureField", "field"))
+        self.addDataSlot(OutputDataSlot(self, "DisplacementField", "field"))
 
 
 def printCode (code, level=-1):
@@ -43,16 +41,16 @@ def test():
     graph.setGeometry(100, 100, 800, 600)
     graph.show()
 
-    workflow = Block.WorkflowBlock()
+    workflow = WorkflowBlock(graph.scene)
     model1 = ModelA(workflow)
     model2 = ModelB(workflow)
 
-    timeloop = Block.TimeLoopBlock(workflow)
+    timeloop = TimeLoopBlock(workflow)
 
     timeloop.addExecutionBlock(model1)
     timeloop.addExecutionBlock(model2)
-    timeloop.setVariable("start_time", 0.0)
-    timeloop.setVariable("target_time", 1.0)
+    # timeloop.setVariable("start_time", 0.0)
+    # timeloop.setVariable("target_time", 1.0)
     # workflow.dataLinks.append(Block.DataLink(model1.dataSlots[0], model2.dataSlots[0]))
 
     workflow.addExecutionBlock(timeloop)

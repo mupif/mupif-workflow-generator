@@ -5,7 +5,6 @@ Requirements:
 pip3 install pyqt5
 pip3 install Qt.py
 """
-import Qt
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
@@ -19,7 +18,7 @@ import os
 class GraphWidget (QtWidgets.QWidget):
     """ Represent workflow graph """
     def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(self,parent=parent)
+        QtWidgets.QWidget.__init__(self, parent=parent)
 
         self.scene = QtWidgets.QGraphicsScene()
         self.view = GraphView.GraphView()
@@ -38,6 +37,7 @@ class GraphWidget (QtWidgets.QWidget):
         # A cache for storing a representation of the current scene.
         # This is used for the Hold scene / Fetch scene feature.
         self.lastStoredSceneData = None
+        # self.scene.addRect(0, 0, 10, 10, QtGui.QPen(QtCore.Qt.black), QtGui.QBrush(QtCore.Qt.transparent))
 
     def clearScene(self):
         """Remove everything in the current scene.
@@ -155,11 +155,19 @@ class GraphWidget (QtWidgets.QWidget):
         layoutSceneAction.triggered.connect(_layoutScene)
 
         def _addWorkflowBlock():
-            new_workflow = Block.WorkflowBlock()
+            new_workflow = Block.WorkflowBlock(self.scene)
             self.addNode(new_workflow)
 
         addWorkflowBlockAction = subMenu.addAction("Add WorkflowBlock")
         addWorkflowBlockAction.triggered.connect(_addWorkflowBlock)
+
+        def _showAllElements():
+            items = self.scene.items()
+            for item in items:
+                item.setVisible(True)
+
+        showAllElements = subMenu.addAction("Show all elements")
+        showAllElements.triggered.connect(_showAllElements)
 
     # def addNodesMenuActions(self, menu):
     #     subMenu = menu.addMenu("Nodes")
@@ -209,7 +217,7 @@ class GraphWidget (QtWidgets.QWidget):
     def registerNodeClass(self, cls):
         if cls not in self.nodeClasses:
             self.nodeClasses.append(cls)
-            print ("registering %s", cls)
+            print("registering %s", cls)
 
     def unregisterNodeClass(self, cls):
         if cls in self.nodeClasses:
@@ -230,3 +238,9 @@ class GraphWidget (QtWidgets.QWidget):
             if node.uuid == uuid:
                 return node
         return None
+
+    def updateBlockPositions(self):
+        d = self.getNodeById(0)
+        d.widget.updateChildrenPosition()
+        d.updateDataLinksPath()
+

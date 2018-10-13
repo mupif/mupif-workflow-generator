@@ -1,11 +1,9 @@
 """Custom QGraphicsView."""
-
-import Qt
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 import Block
-from edge import Edge
+# from edge import Edge
 
 
 CURRENT_ZOOM = 1.0

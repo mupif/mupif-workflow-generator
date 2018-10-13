@@ -21,7 +21,7 @@ class ModelB(Block.ModelBlock):
         Block.ModelBlock.__init__(self, workflow, None, "MechanicalSolver")
 
 
-def printCode (code, level=-1):
+def printCode(code, level=-1):
     if isinstance(code, str):
         print("%s%s" % ('\t'*level, code))
     else:

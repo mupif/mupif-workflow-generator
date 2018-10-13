@@ -7,17 +7,17 @@
 
 from PyQt5 import QtGui
 from PyQt5 import QtCore
-# from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets
 
-from node import Node
-from edge import Edge
+# from Node import Node
+# from edge import Edge
 
 
 CURRENT_ZOOM = 1.0
 ALTERNATE_MODE_KEY = QtCore.Qt.Key.Key_Alt
 
 
-class GridView(QtGui.QGraphicsView):
+class GridView(QtWidgets.QGraphicsView):
     """This view will draw a grid in its background."""
 
     def __init__(self, *args, **kwargs):
@@ -44,9 +44,9 @@ class GridView(QtGui.QGraphicsView):
         """Return all Nodes in the scene."""
         return [i for i in self.scene().items() if isinstance(i, Node)]
 
-    def edges(self):
-        """Return all Edges in the scene."""
-        return [i for i in self.scene().items() if isinstance(i, Edge)]
+    # def edges(self):
+    #     """Return all Edges in the scene."""
+    #     return [i for i in self.scene().items() if isinstance(i, Edge)]
 
     def redrawEdges(self):
         """Trigger a repaint of all Edges in the scene."""
