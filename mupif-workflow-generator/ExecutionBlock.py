@@ -316,6 +316,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def destroy(self):
         """Remove this Node, its Header, Knobs and connected Edges."""
+        # TODO fix it
         print("destroy node:", self)
         self.header.destroy()
         for slot in self.dataSlots():

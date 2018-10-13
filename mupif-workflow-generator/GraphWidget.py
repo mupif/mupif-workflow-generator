@@ -10,7 +10,6 @@ from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
 import GraphView
-import Node
 import Block
 import os
 
@@ -53,7 +52,7 @@ class GraphWidget (QtWidgets.QWidget):
         # Delete selected nodes.
         if event.key() == QtCore.Qt.Key_Delete:
             selectedNodes = [i for i in self.scene.selectedItems()
-                             if isinstance(i, Node)]
+                             if isinstance(i, Block.ExecutionBlock)]
             for node in selectedNodes:
                 node.destroy()
 
