@@ -3,17 +3,17 @@ import sys
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
-import DataLink
-import Block
-import Window
-import GraphWidget
+from DataLink import *
+from Block import *
+from Window import *
+from GraphWidget import *
 
 
 class Application():
 
     def __init__(self):
         self.app = QtWidgets.QApplication([])
-        self.window = Window.Window()
+        self.window = Window()
 
     def run(self):
         sys.exit(self.app.exec_())

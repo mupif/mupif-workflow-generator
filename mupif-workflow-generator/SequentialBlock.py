@@ -49,7 +49,7 @@ class SequentialBlock (ExecutionBlock):
         self.canvas = QtWidgets.QGraphicsWidget()
         ExecutionBlock.__init__(self, workflow)
         self.layout = QtWidgets.QGraphicsLinearLayout()
-        self.layout.setSpacing(20)
+        self.layout.setSpacing(self.spacing)
         self.canvas.setLayout(self.layout)
         self.canvas.setParentItem(self)
 
@@ -61,7 +61,8 @@ class SequentialBlock (ExecutionBlock):
         print ("Adding block:", self, block)
         self.layout.addItem(block)
         self.adjustSize()
-        self.updateSizeForChildren()
+        block.workflow.updateChildrenSizeAndPositionAndResizeSelf()
+        # self.updateSizeForChildren()
 
     def getChildExecutionBlocks(self, cls=None, recursive=False):
         blocks = []
@@ -96,13 +97,13 @@ class SequentialBlock (ExecutionBlock):
         #                    self.header.h)
         return rect
 
-    def updateSizeForChildren(self):
-        """Adjust width and height as needed for header and knobs."""
-        ExecutionBlock.updateSizeForChildren(self)
-        self.w = max(self.w, self.boundingRect().width())
-        self.h = max(self.h, self.boundingRect().height())
-        print("Canvas: ", self.boundingRect())
-        print ("SeqBlock:", self, "height:", self.h, "width:", self.w)
+    # def updateSizeForChildren(self):
+    #     """Adjust width and height as needed for header and knobs."""
+    #     ExecutionBlock.updateSizeForChildren(self)
+    #     self.w = max(self.w, self.boundingRect().width())
+    #     self.h = max(self.h, self.boundingRect().height())
+    #     print("Canvas: ", self.boundingRect())
+    #     print ("SeqBlock:", self, "height:", self.h, "width:", self.w)
 
     def paint(self, painter, option, widget):
         # get bounding box of childItems

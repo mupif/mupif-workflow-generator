@@ -73,7 +73,6 @@ def test():
 
     workflow.addExecutionBlock(timeloop)
 
-    workflow.resizeForChildren()
     graph.addNode(workflow)
 
     model1.getDataSlotWithName("ASTField").connectTo(model2.getDataSlotWithName("ASTField"))

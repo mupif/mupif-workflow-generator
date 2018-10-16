@@ -33,19 +33,28 @@ class Window(QtWidgets.QMainWindow):
 
         self.statusBar()
 
+        # window menu definition
         main_menu = self.menuBar()
+        #
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
-        workflow_action_generate_code = QtWidgets.QAction('Generate code', self)
-        workflow_action_save_as = QtWidgets.QAction('Save as', self)
+        workflow_action_generate_class_code = QtWidgets.QAction('Generate class code', self)
+        workflow_action_generate_execution_code = QtWidgets.QAction('Generate execution code', self)
+        workflow_action_save_to_file = QtWidgets.QAction('Save to file', self)
         workflow_action_load_from_file = QtWidgets.QAction('Load from file', self)
-        workflow_menu.addAction(workflow_action_generate_code)
-        workflow_menu.addAction(workflow_action_save_as)
+        workflow_menu.addAction(workflow_action_generate_class_code)
+        workflow_menu.addAction(workflow_action_generate_execution_code)
+        workflow_menu.addAction(workflow_action_save_to_file)
         workflow_menu.addAction(workflow_action_load_from_file)
+        #
+        apis_menu = main_menu.addMenu('APIs')
+        apis_action_load_from_file = QtWidgets.QAction('Load API from file', self)
+        apis_action_show_list = QtWidgets.QAction('List of available APIs', self)
+        apis_menu.addAction(apis_action_load_from_file)
+        apis_menu.addAction(apis_action_show_list)
 
         # fileMenu.triggered.connect(sys.exit)
 
-        # self.home()
         self.show()
 
     # def home(self):

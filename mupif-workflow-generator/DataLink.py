@@ -105,7 +105,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.w = 14
         self.h = 14
 
-        self.margin = 5
+        self.spacing = 5
         self.flow = FLOW_LEFT_TO_RIGHT
 
         self.maxConnections = -1  # A negative value means 'unlimited'.
@@ -207,16 +207,16 @@ class DataSlot(QtWidgets.QGraphicsItem):
         text_size = helpers.getTextSize(self.displayName, painter=painter)
 
         # if self.flow == FLOW_LEFT_TO_RIGHT:
-        #     x = bbox.right() + self.margin
+        #     x = bbox.right() + self.spacing
         # elif self.flow == FLOW_RIGHT_TO_LEFT:
-        #     x = bbox.left() - self.margin - text_size.width()
+        #     x = bbox.left() - self.spacing - text_size.width()
         # else:
         #     raise UnknownFlowError(
         #         "Flow not recognized: {0}".format(self.flow))
         if self.__class__ == InputDataSlot:
-            x = bbox.right() + self.margin
+            x = bbox.right() + self.spacing
         else:
-            x = bbox.left() - self.margin - text_size.width()
+            x = bbox.left() - self.spacing - text_size.width()
         y = bbox.bottom()
 
         painter.setPen(QtGui.QPen(self.labelColor))
@@ -370,16 +370,18 @@ class DataSlot(QtWidgets.QGraphicsItem):
                 self.name = new_name
                 self.displayName = self.name
 
-                self.owner.updateSizeForChildren()
-                self.owner.resizeForChildDataSlots()
+                # self.owner.updateSizeForChildren()
+                # self.owner.resizeForChildDataSlots()
+                self.owner.callUpdatePositionOfWholeWorkflow()
 
         rename_slot_action = sub_menu.addAction("Rename")
         rename_slot_action.triggered.connect(_rename)
 
         def _delete():
             self.destroy()
-            self.owner.updateSizeForChildren()
-            self.owner.resizeForChildDataSlots()
+            # self.owner.updateSizeForChildren()
+            # self.owner.resizeForChildDataSlots()
+            self.owner.callUpdatePositionOfWholeWorkflow()
 
             # TODO resize block after deletion
 

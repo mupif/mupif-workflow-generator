@@ -15,7 +15,7 @@ def readFileContent(filePath):
 
 def toJson(serialized):
     """Return JSON string from given native Python datatypes."""
-    return json.dumps(serialized, encoding="utf-8", indent=4)
+    return json.dumps(serialized)
 
 
 def fromJson(jsonString):

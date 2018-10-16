@@ -54,7 +54,7 @@ class Header(QtWidgets.QGraphicsItem):
 
         # left aligned text
         text_size = getTextSize(self.text, painter=painter)
-        painter.drawText(self.x() + self.node.margin,
+        painter.drawText(self.x() + self.node.spacing,
                          self.y() + (self.h + text_size.height() / 2) / 2,
                          self.text)
 

@@ -76,7 +76,8 @@ class WorkflowBlock(SequentialBlock):
     def addAddBlockMenuActions(self, menu):
 
         def _updateChildrenPosition():
-            self.updateChildrenPosition()
+            # self.updateChildrenPosition()
+            self.updateChildrenSizeAndPositionAndResizeSelf()
             self.updateDataLinksPath()
 
         new_action = menu.addAction("Update position of child blocks")

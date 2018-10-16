@@ -212,7 +212,7 @@ class GraphWidget (QtWidgets.QWidget):
 
     def getNodeById(self, uuid):
         """Return Node that matches the given uuid string."""
-        nodes = [i for i in self.scene.items() if isinstance(i, Node)]
+        nodes = [i for i in self.scene.items() if isinstance(i, Block.ExecutionBlock)]
         for node in nodes:
             if node.uuid == uuid:
                 return node
@@ -222,4 +222,12 @@ class GraphWidget (QtWidgets.QWidget):
         d = self.getNodeById(0)
         d.widget.updateChildrenPosition()
         d.updateDataLinksPath()
+
+    def getDataInJSON(self):
+        """Returns JSON representation of the workflow"""
+
+    def constructDataFromJSON(self, json_data):
+        """Constructs the structure from JSON representation of the workflow"""
+
+
 

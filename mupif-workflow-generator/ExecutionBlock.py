@@ -64,7 +64,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.w = 10
         self.h = 10
 
-        self.margin = 6
+        self.spacing = 8
+        # self.margin = self.spacing
         self.roundness = 0
         self.fillColor = QtGui.QColor(220, 220, 220)
         self.addHeader(Header.Header(node=self, text=self.__class__.__name__))
@@ -93,9 +94,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         self.children_visible = True
 
-    def setVariable(self, name, value):
-        """Sets block variable"""
-
     def generateInitCode(self):
         """Generate initialization block code"""
 
@@ -107,13 +105,16 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         """Return a list of data slots."""
         return self.childItems()
 
+    def getChildItems(self):
+        return self.childItems()
+
     def getDataSlots (self, cls = None):
         """Return a list of data slots.
             If the optional `cls` is specified, return only Slots of that class.
             This is useful e.g. to get all Input or Output Slots.
         """
         slots = []
-        for child in self._getDataSlots():
+        for child in self.getChildItems():
             if isinstance(child, DataSlot):
                 slots.append(child)
         if cls:
@@ -166,67 +167,107 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     def sizeHint(self, which, constraint):
         return QtCore.QSizeF(self.w, self.h)
 
-    def updateSizeForChildren(self):
-        """Adjust width and height as needed for header and knobs."""
+    def updateChildrenPosition_temp(self):
 
-        def adjustHeight():
-            """Adjust height to fit header and all knobs."""
-            slots = [c for c in self._getDataSlots() if isinstance(c, DataSlot)]
-            # print (slots, self._getDataSlots())
-            slots_height = sum([k.h + self.margin for k in slots])
-            height_needed = self.header.h + slots_height + self.margin
-            self.h = height_needed
-            # print ("Adjusted height:", self.h)
+        slot_widths = [k.w + self.spacing * 3 + helpers.getTextSize(k.displayName).width() for k in self.getDataSlots()]
+        slot_widths.append(0)
+        max_slot_width = max(slot_widths)
 
-        def adjustWidth():
-            """Adjust width as needed for the widest child item."""
-            header_width = (self.margin + helpers.getTextSize(self.header.text).width())
+        self.header.setY(0)
+        self.header.setX(0)
 
-            slots = [c for c in self._getDataSlots() if isinstance(c, DataSlot)]
-            slot_widths = [k.w + self.margin + helpers.getTextSize(k.displayName).width()
-                          for k in slots]
-            max_width = max([header_width] + slot_widths)
-            # print (slot_widths)
-            self.w = max_width + self.margin
+        header_width = (2*self.spacing + helpers.getTextSize(self.header.text).width())
+        width_child_max = max(header_width, max_slot_width)
+        height_children = self.header.h + self.spacing
 
-        adjustWidth()
-        adjustHeight()
-        print(self, "height:", self.h, "width:", self.w)
+        # update data slots
+        for elem in self.getDataSlots():
+            elem.setY(height_children)
+            print("Setting y of %s to %d" % (elem.__class__.__name__, height_children))
+            width_child_max = max(width_child_max, elem.w)
+            print("%s - w=%d" % (elem.name, elem.w))
+            height_children += elem.h + self.spacing
+
+        # update blocks
+        for elem in self.getChildExecutionBlocks():
+            # elem.updateChildrenPosition_temp()
+            elem.setY(height_children)
+            width_child_max = max(width_child_max, elem.w)
+            print("%s - w=%d" % (elem.name, elem.w))
+
+            height_children += elem.h + self.spacing
+            elem.setX(self.spacing)
+
+        # TODO check why it causes wider workflow block than necessary
+        # rect = self.childrenBoundingRect()
+        # if rect.width() > width_child_max:
+        #     # if not isinstance(self, ExecutionBlock):
+        #     width_child_max = rect.width()
+
+        self.h = height_children
+        self.w = width_child_max + self.spacing*2
+
+        for elem in self.getDataSlots():
+            if isinstance(elem, InputDataSlot):
+                elem.setX(self.spacing)
+            else:
+                elem.setX(self.w-elem.w-self.spacing)
+
+    def updateChildrenSizeAndPositionAndResizeSelf(self, color_id=0):
+        if color_id:
+            self.fillColor = QtGui.QColor(220, 220, 220)
+            child_color_id = 0
+
+        else:
+            self.fillColor = QtGui.QColor(180, 180, 180)
+            child_color_id = 1
+
+        # call it for child blocks
+        for elem in self.getChildExecutionBlocks():
+            elem.updateChildrenSizeAndPositionAndResizeSelf(child_color_id)
+
+        # update children positions
+        self.updateChildrenPosition_temp()
+
+        # self.updateSizeForChildren()
+
+    def callUpdatePositionOfWholeWorkflow(self):
+        self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
     def addHeader(self, header):
         """Assign the given header and adjust the Node's size for it."""
         self.header = header
         header.setPos(self.pos())
         header.setParentItem(self)
-        self.updateSizeForChildren()
+        self.updateChildrenSizeAndPositionAndResizeSelf()
 
-    def resizeForChildDataSlots(self):
-        slots = []
-        i = 0
-        for slot in self.childItems():
-            if isinstance(slot, InputDataSlot) or isinstance(slot, OutputDataSlot) or i < 1:
-                slots.append(slot)
-            i += 1
-
-        i = 0
-        for slot in slots:
-            children = [c for c in self.childItems()]
-            y_offset = sum([c.boundingRect().height() + self.margin for c in children[:i]])
-            print(y_offset)
-            x_offset = self.margin / 2
-
-            slot.setParentItem(self)
-            slot.margin = self.margin
-            self.updateSizeForChildren()
-
-            bbox = self.boundingRect()
-            if isinstance(slot, OutputDataSlot):
-                slot.setPos(bbox.right() - slot.w + x_offset, y_offset)
-                pass
-            elif isinstance(slot, InputDataSlot):
-                slot.setPos(bbox.left() - x_offset, y_offset)
-                pass
-            i += 1
+    # def resizeForChildDataSlots(self):
+    #     slots = []
+    #     i = 0
+    #     for slot in self.childItems():
+    #         if isinstance(slot, InputDataSlot) or isinstance(slot, OutputDataSlot) or i < 1:
+    #             slots.append(slot)
+    #         i += 1
+    #
+    #     i = 0
+    #     for slot in slots:
+    #         children = [c for c in self.childItems()]
+    #         y_offset = sum([c.boundingRect().height() + self.spacing for c in children[:i]])
+    #         print(y_offset)
+    #         x_offset = self.spacing / 2
+    #
+    #         slot.setParentItem(self)
+    #         slot.spacing = self.spacing
+    #         self.updateSizeForChildren()
+    #
+    #         bbox = self.boundingRect()
+    #         if isinstance(slot, OutputDataSlot):
+    #             slot.setPos(bbox.right() - slot.w + x_offset, y_offset)
+    #             pass
+    #         elif isinstance(slot, InputDataSlot):
+    #             slot.setPos(bbox.left() - x_offset, y_offset)
+    #             pass
+    #         i += 1
 
     def addDataSlot(self, slot):
         """Add the given Slot to this Node.
@@ -244,28 +285,31 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
                 "Slot names must be unique, but {0} already exists."
                 .format(slot.name))
 
-        children = [c for c in self.childItems()]
-        y_offset = sum([c.boundingRect().height() + self.margin for c in children])
-        print(y_offset)
-        x_offset = self.margin / 2
-
+        # children = [c for c in self.childItems()]
+        # y_offset = sum([c.boundingRect().height() + self.spacing for c in children])
+        # print(y_offset)
+        # x_offset = self.spacing / 2
+        #
         slot.setParentItem(self)
-        slot.margin = self.margin
-        self.updateSizeForChildren()
+        slot.spacing = self.spacing
+        # self.updateSizeForChildren()
+        #
+        # bbox = self.boundingRect()
+        # if isinstance(slot, OutputDataSlot):
+        #     slot.setPos(bbox.right() - slot.w - self.spacing, y_offset)
+        #     pass
+        # elif isinstance(slot, InputDataSlot):
+        #     slot.setPos(bbox.left() + self.spacing, y_offset)
+        #     pass
 
-        bbox = self.boundingRect()
-        if isinstance(slot, OutputDataSlot):
-            slot.setPos(bbox.right() - slot.w + x_offset, y_offset)
-            pass
-        elif isinstance(slot, InputDataSlot):
-            slot.setPos(bbox.left() - x_offset, y_offset)
-            pass
+        self.callUpdatePositionOfWholeWorkflow()
 
     def removeDataSlot(self, slot):
         """Remove the Knob reference to this node and resize."""
         slot.setParentItem(None)
-        self.updateSizeForChildren()
+        # self.updateSizeForChildren()
         # self.resizeForChildDataSlots()
+        self.callUpdatePositionOfWholeWorkflow()
 
     def addExecutionBlock(self, block):
         pass
@@ -369,65 +413,65 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.addShowHideMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
-    def resizeMe(self, w, h):
-        self.w = w
-        self.h = h
+    # def resizeMe(self, w, h):
+    #     self.w = w
+    #     self.h = h
 
-    def resizeForChildren(self):
-        print("\n\nRESIZING ---------------------------------\n\n")
-        rect = self.childrenBoundingRect()
+    # def resizeForChildren(self):
+    #     print("\n\nRESIZING ---------------------------------\n\n")
+    #     rect = self.childrenBoundingRect()
+    #
+    #     self.resizeMe(rect.width(), rect.height())
+    #     # rect = QtCore.QRectF(10, 10, 100, 100)
+    #     # self.setGeometry(rect)
 
-        self.resizeMe(rect.width(), rect.height())
-        # rect = QtCore.QRectF(10, 10, 100, 100)
-        # self.setGeometry(rect)
-
-    def updateChildrenPosition(self, color_id=0):
-        print("\nPositioning child blocks of %s\n" % self.name)
-        if color_id:
-            self.fillColor = QtGui.QColor(220, 220, 220)
-            child_color_id = 0
-
-        else:
-            self.fillColor = QtGui.QColor(180, 180, 180)
-            child_color_id = 1
-
-        width_child_max = 0
-        height_children = self.header.h + 10
-        child_blocks = self.getChildExecutionBlocks()
-
-        child_slots = self.getDataSlots()
-        for slot in child_slots:
-            if slot.w > width_child_max:
-                width_child_max = slot.w
-            print("%s - w=%d" % (slot.name, slot.w))
-
-            height_children += slot.h + 10
-
-        for block in child_blocks:
-            block.updateChildrenPosition(child_color_id)
-            block.setY(height_children)
-            if block.w > width_child_max:
-                width_child_max = block.w
-            print("%s - w=%d" % (block.name, block.w))
-
-            height_children += block.h + 10
-            block.setX(20)
-
-        rect = self.childrenBoundingRect()
-        if rect.width() > width_child_max:
-            # if not isinstance(self, ExecutionBlock):
-            width_child_max = rect.width()
-        print("%s's rect - w=%d" % (self.name, rect.width()))
-
-        self.h = height_children + 10
-        self.w = width_child_max + 40
-
-        print("setting %s - w=%d" % (self.name, self.w))
-
-        for slot in child_slots:
-            if isinstance(slot, InputDataSlot):
-                slot.setX(20)
-            else:
-                slot.setX(self.w-slot.w-20)
-
-                print("\nEND of positioning child blocks of %s\n" % self.name)
+    # def updateChildrenPosition(self, color_id=0):
+    #     print("\nPositioning child blocks of %s\n" % self.name)
+    #     if color_id:
+    #         self.fillColor = QtGui.QColor(220, 220, 220)
+    #         child_color_id = 0
+    #
+    #     else:
+    #         self.fillColor = QtGui.QColor(180, 180, 180)
+    #         child_color_id = 1
+    #
+    #     width_child_max = 0
+    #     height_children = self.header.h + 10
+    #     child_blocks = self.getChildExecutionBlocks()
+    #
+    #     child_slots = self.getDataSlots()
+    #     for slot in child_slots:
+    #         if slot.w > width_child_max:
+    #             width_child_max = slot.w
+    #         print("%s - w=%d" % (slot.name, slot.w))
+    #
+    #         height_children += slot.h + 10
+    #
+    #     for block in child_blocks:
+    #         block.updateChildrenPosition(child_color_id)
+    #         block.setY(height_children)
+    #         if block.w > width_child_max:
+    #             width_child_max = block.w
+    #         print("%s - w=%d" % (block.name, block.w))
+    #
+    #         height_children += block.h + 10
+    #         block.setX(20)
+    #
+    #     rect = self.childrenBoundingRect()
+    #     if rect.width() > width_child_max:
+    #         # if not isinstance(self, ExecutionBlock):
+    #         width_child_max = rect.width()
+    #     print("%s's rect - w=%d" % (self.name, rect.width()))
+    #
+    #     self.h = height_children + 10
+    #     self.w = width_child_max + 40
+    #
+    #     print("setting %s - w=%d" % (self.name, self.w))
+    #
+    #     for slot in child_slots:
+    #         if isinstance(slot, InputDataSlot):
+    #             slot.setX(20)
+    #         else:
+    #             slot.setX(self.w-slot.w-20)
+    #
+    #             print("\nEND of positioning child blocks of %s\n" % self.name)
