@@ -46,35 +46,7 @@ class SequentialBlock (ExecutionBlock):
     Implementation of sequential processing block
     """
     def __init__(self, workflow):
-        self.canvas = QtWidgets.QGraphicsWidget()
         ExecutionBlock.__init__(self, workflow)
-        self.layout = QtWidgets.QGraphicsLinearLayout()
-        self.layout.setSpacing(self.spacing)
-        self.canvas.setLayout(self.layout)
-        self.canvas.setParentItem(self)
-
-        palette = QtGui.QPalette()
-        palette.setColor(QtGui.QPalette.Window, QtCore.Qt.yellow)
-        self.canvas.setPalette(palette)
-
-    def addExecutionBlock(self, block):
-        print ("Adding block:", self, block)
-        self.layout.addItem(block)
-        self.adjustSize()
-        block.workflow.updateChildrenSizeAndPositionAndResizeSelf()
-        # self.updateSizeForChildren()
-
-    def getChildExecutionBlocks(self, cls=None, recursive=False):
-        blocks = []
-        for child in self.canvas.childItems():
-            print (child)
-            if isinstance(child, ExecutionBlock):
-                blocks.append(child)
-                if recursive:
-                    blocks += child.getChildExecutionBlocks(cls, recursive)
-        if cls:
-            blocks = list(filter(lambda k: k.__class__ is cls, blocks))
-        return blocks
 
     def generateCode(self):
         code = ["# Generating code for %s" % self.name]
@@ -94,31 +66,7 @@ class SequentialBlock (ExecutionBlock):
                              self.y,
                              self.w,
                              self.h)
-        #                    self.header.h)
         return rect
-
-    # def updateSizeForChildren(self):
-    #     """Adjust width and height as needed for header and knobs."""
-    #     ExecutionBlock.updateSizeForChildren(self)
-    #     self.w = max(self.w, self.boundingRect().width())
-    #     self.h = max(self.h, self.boundingRect().height())
-    #     print("Canvas: ", self.boundingRect())
-    #     print ("SeqBlock:", self, "height:", self.h, "width:", self.w)
-
-    def paint(self, painter, option, widget):
-        # get bounding box of childItems
-        # painter.setBrush(QtGui.QBrush(self.fillColor))
-        # painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
-
-        # childRect = self.childrenBoundingRect()
-        # painter.drawRoundedRect(self.x,
-        #                        self.y,
-        #                        childRect.width(),
-        #                        childRect.height(),
-        #                        self.roundness,
-        #                        self.roundness)
-
-        ExecutionBlock.paint(self, painter, option, widget)
 
     def mouseMoveEvent(self, event):
         """Update selected item's (and children's) positions as needed.

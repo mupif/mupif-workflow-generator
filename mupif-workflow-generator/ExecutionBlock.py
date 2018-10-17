@@ -68,21 +68,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         # self.margin = self.spacing
         self.roundness = 0
         self.fillColor = QtGui.QColor(220, 220, 220)
-        self.addHeader(Header.Header(node=self, text=self.__class__.__name__))
 
-        # w = QtWidgets.QWidget()
-        # le = QtWidgets.QLineEdit(w)
-        # lay = QtWidgets.QHBoxLayout()
-        # w.setLayout(lay)
-        # le.setStyleSheet("border: 5px solid black;")
-        # w.show()
-
-        # style = QtWidgets.QStyle()
-        # style.
-        # self.setStyle(style)
-
-        # _scene = self.workflow.getScene()
-        # _scene.addRect(self.x, self.y, self.w, self.h, QtGui.QPen(QtCore.Qt.black), QtGui.QBrush(QtCore.Qt.transparent))
+        # self.addHeader(Header.Header(node=self, text=self.__class__.__name__))
+        self.header = Header.Header(node=self, text=self.__class__.__name__)
+        self.header.setPos(self.pos())
+        self.header.setParentItem(self)
+        self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
         # General configuration.
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
@@ -101,14 +92,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         """returns tuple containing strings with code lines"""
         return ["block_execution"]
 
-    def _getDataSlots(self):
-        """Return a list of data slots."""
-        return self.childItems()
-
     def getChildItems(self):
         return self.childItems()
 
-    def getDataSlots (self, cls = None):
+    def getDataSlots(self, cls = None):
         """Return a list of data slots.
             If the optional `cls` is specified, return only Slots of that class.
             This is useful e.g. to get all Input or Output Slots.
@@ -121,12 +108,67 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             slots = list(filter(lambda k: k.__class__ is cls, slots))
         return slots
 
-    def getDataSlotWithName (self, name):
+    def getDataSlotWithName(self, name):
         """Return matching data slot by its name, None otherwise."""
         for slot in self.getDataSlots():
             if slot.name == name:
                 return slot
         return None
+
+    def addDataSlot(self, slot):
+        """Add the given Slot to this Node.
+        A Slot must have a unique name, meaning there can be no duplicates within
+        a Node (the displayNames are not constrained though).
+        Assign ourselves as the slot's parent item (which also will put it onto
+        the current scene, if not yet done) and adjust or size for it.
+        The position of the slot is set relative to this Node and depends on it
+        either being an Input- or Output slot.
+        """
+        slot_names = [k.name for k in self.getDataSlots()]
+        print("adding slot, existing Slots:", self.getDataSlots(), slot_names)
+        if slot.name in slot_names:
+            raise DuplicateKnobNameError(
+                "Slot names must be unique, but {0} already exists."
+                .format(slot.name))
+        slot.setParentItem(self)
+        slot.spacing = self.spacing
+        self.callUpdatePositionOfWholeWorkflow()
+
+    def removeDataSlot(self, slot):
+        """Remove the Knob reference to this node and resize."""
+        slot.setParentItem(None)
+        self.callUpdatePositionOfWholeWorkflow()
+
+    def addExecutionBlock(self, block):
+        block.setParentItem(self)
+
+        self.callUpdatePositionOfWholeWorkflow()
+
+    def getChildExecutionBlocks(self, cls=None, recursive=False):
+        blocks = []
+        # for child in self.canvas.childItems():
+        for child in self.childItems():
+            print (child)
+            if isinstance(child, ExecutionBlock):
+                blocks.append(child)
+                if recursive:
+                    blocks += child.getChildExecutionBlocks(cls, recursive)
+        if cls:
+            blocks = list(filter(lambda k: k.__class__ is cls, blocks))
+        return blocks
+
+    def getBlocks(self, cls = None):
+        """Return a list of data slots.
+            If the optional `cls` is specified, return only Slots of that class.
+            This is useful e.g. to get all Input or Output Slots.
+        """
+        return_array = []
+        for child in self.getChildItems():
+            if isinstance(child, ExecutionBlock):
+                return_array.append(child)
+        if cls:
+            return_array = list(filter(lambda k: k.__class__ is cls, return_array))
+        return return_array
 
     def generateBlockInputs(self):
         input_slots = self.getDataSlots(InputDataSlot)
@@ -226,96 +268,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         for elem in self.getChildExecutionBlocks():
             elem.updateChildrenSizeAndPositionAndResizeSelf(child_color_id)
 
-        # update children positions
         self.updateChildrenPosition_temp()
-
-        # self.updateSizeForChildren()
 
     def callUpdatePositionOfWholeWorkflow(self):
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
-
-    def addHeader(self, header):
-        """Assign the given header and adjust the Node's size for it."""
-        self.header = header
-        header.setPos(self.pos())
-        header.setParentItem(self)
-        self.updateChildrenSizeAndPositionAndResizeSelf()
-
-    # def resizeForChildDataSlots(self):
-    #     slots = []
-    #     i = 0
-    #     for slot in self.childItems():
-    #         if isinstance(slot, InputDataSlot) or isinstance(slot, OutputDataSlot) or i < 1:
-    #             slots.append(slot)
-    #         i += 1
-    #
-    #     i = 0
-    #     for slot in slots:
-    #         children = [c for c in self.childItems()]
-    #         y_offset = sum([c.boundingRect().height() + self.spacing for c in children[:i]])
-    #         print(y_offset)
-    #         x_offset = self.spacing / 2
-    #
-    #         slot.setParentItem(self)
-    #         slot.spacing = self.spacing
-    #         self.updateSizeForChildren()
-    #
-    #         bbox = self.boundingRect()
-    #         if isinstance(slot, OutputDataSlot):
-    #             slot.setPos(bbox.right() - slot.w + x_offset, y_offset)
-    #             pass
-    #         elif isinstance(slot, InputDataSlot):
-    #             slot.setPos(bbox.left() - x_offset, y_offset)
-    #             pass
-    #         i += 1
-
-    def addDataSlot(self, slot):
-        """Add the given Slot to this Node.
-        A Slot must have a unique name, meaning there can be no duplicates within
-        a Node (the displayNames are not constrained though).
-        Assign ourselves as the slot's parent item (which also will put it onto
-        the current scene, if not yet done) and adjust or size for it.
-        The position of the slot is set relative to this Node and depends on it
-        either being an Input- or Output slot.
-        """
-        slot_names = [k.name for k in self.getDataSlots()]
-        print("adding slot, existing Slots:", self.getDataSlots(), slot_names)
-        if slot.name in slot_names:
-            raise DuplicateKnobNameError(
-                "Slot names must be unique, but {0} already exists."
-                .format(slot.name))
-
-        # children = [c for c in self.childItems()]
-        # y_offset = sum([c.boundingRect().height() + self.spacing for c in children])
-        # print(y_offset)
-        # x_offset = self.spacing / 2
-        #
-        slot.setParentItem(self)
-        slot.spacing = self.spacing
-        # self.updateSizeForChildren()
-        #
-        # bbox = self.boundingRect()
-        # if isinstance(slot, OutputDataSlot):
-        #     slot.setPos(bbox.right() - slot.w - self.spacing, y_offset)
-        #     pass
-        # elif isinstance(slot, InputDataSlot):
-        #     slot.setPos(bbox.left() + self.spacing, y_offset)
-        #     pass
-
-        self.callUpdatePositionOfWholeWorkflow()
-
-    def removeDataSlot(self, slot):
-        """Remove the Knob reference to this node and resize."""
-        slot.setParentItem(None)
-        # self.updateSizeForChildren()
-        # self.resizeForChildDataSlots()
-        self.callUpdatePositionOfWholeWorkflow()
-
-    def addExecutionBlock(self, block):
-        pass
-
-    def getChildExecutionBlocks(self, cls=None, recursive=False):
-        return []
 
     def paint(self, painter, option, widget):
         """Draw the Node's container rectangle."""
