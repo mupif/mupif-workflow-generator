@@ -45,8 +45,8 @@ class SequentialBlock (ExecutionBlock):
     """
     Implementation of sequential processing block
     """
-    def __init__(self, workflow):
-        ExecutionBlock.__init__(self, workflow)
+    def __init__(self, parent, workflow):
+        ExecutionBlock.__init__(self, parent, workflow)
 
     def generateCode(self):
         code = ["# Generating code for %s" % self.name]

@@ -50,28 +50,22 @@ def printCode(code, level=-1):
 
 
 class WorkflowBlock(SequentialBlock):
-    def __init__(self, loc_scene):
+    def __init__(self, parent, loc_scene):
         self.loc_scene = loc_scene
-        SequentialBlock.__init__(self, self)
+        SequentialBlock.__init__(self, parent, self)
         self.name = "WorkflowBlock"
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
 
     def getScene(self):
         return self.loc_scene
 
-    def getExecutionBlockDataLinks(self, block, mode=""):
+    def getAllDataLinks(self):
         answer = []
-        for iLink in self.dataLinks:
-            if (mode == "in" or mode == "") and (iLink.output.owner == block):  # link output is block input
-                answer.append(iLink)
-            elif (mode == "out" or mode == "") and (iLink.input.owner == block):  # link input is block output
-                answer.append(iLink)
+        for block in self.getChildExecutionBlocks(None, True):
+            for datalink in block.geConnectedDataLinks():
+                if datalink not in answer:
+                    answer.append(datalink)
         return answer
-        body = SequentialBlock.generateCode(self)
-        # print (body)
-        for i in body:
-            i_code = i
-            while_code.append(i_code)  # indented sequential code
 
     def addAddBlockMenuActions(self, menu):
 
@@ -86,14 +80,14 @@ class WorkflowBlock(SequentialBlock):
         sub_menu = menu.addMenu("Add")
 
         def _addTimeLoopBlock():
-            new_time_loop_block = TimeLoopBlock(self)
+            new_time_loop_block = TimeLoopBlock(self, self)
             self.addExecutionBlock(new_time_loop_block)
 
         add_time_loop_block_action = sub_menu.addAction("TimeLoop Block")
         add_time_loop_block_action.triggered.connect(_addTimeLoopBlock)
 
         def _addVariableBlock():
-            new_block = VariableBlock(self.workflow)
+            new_block = VariableBlock(self, self.workflow)
             self.addExecutionBlock(new_block)
 
         add_variable_block_action = sub_menu.addAction("Variable")
@@ -119,10 +113,21 @@ class WorkflowBlock(SequentialBlock):
         self.addShowHideMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
+    def convertDataLinksToJSON(self):
+        return_json_array = []
+        for datalink in self.getAllDataLinks():
+            return_json_array.append(datalink.convertSelfToJSON())
+        return return_json_array
+
+    def convertToJSON(self):
+        return_json_array = ExecutionBlock.convertToJSON(self)
+        return_json_array.extend(self.convertDataLinksToJSON())
+        return return_json_array
+
 
 class VariableBlock(ExecutionBlock):
-    def __init__(self, workflow):
-        ExecutionBlock.__init__(self, workflow)
+    def __init__(self, parent, workflow):
+        ExecutionBlock.__init__(self, parent, workflow)
         self.value = 0.
         self.addDataSlot(OutputDataSlot(self, "value", float, False))
         self.getDataSlots()[0].displayName = "%le" % self.value
@@ -153,10 +158,15 @@ class VariableBlock(ExecutionBlock):
         self.value = val
         self.getDataSlots()[0].displayName = "%le" % self.value
 
+    def getDictForJSON(self):
+        answer = ExecutionBlock.getDictForJSON(self)
+        answer.update({'value': self.getValue()})
+        return answer
+
 
 class ModelBlock(ExecutionBlock):
-    def __init__(self, workflow, model, model_name):
-        ExecutionBlock.__init__(self, workflow)
+    def __init__(self, parent, workflow, model, model_name):
+        ExecutionBlock.__init__(self, parent, workflow)
         self.model = model
         self.name = model_name
 
@@ -171,8 +181,8 @@ class ModelBlock(ExecutionBlock):
 
 
 class TimeLoopBlock(SequentialBlock):
-    def __init__(self, workflow):
-        SequentialBlock.__init__(self, workflow)
+    def __init__(self, parent, workflow):
+        SequentialBlock.__init__(self, parent, workflow)
         self.addDataSlot(InputDataSlot(self, "start_time", float, False))
         self.addDataSlot(InputDataSlot(self, "target_time", float, False))
 
@@ -214,7 +224,7 @@ class TimeLoopBlock(SequentialBlock):
         sub_menu = menu.addMenu("Add")
 
         def _addModelBlock(idx):
-            new_block = ExecutionBlock.list_of_models[idx](self.workflow)
+            new_block = ExecutionBlock.list_of_models[idx](self, self.workflow)
             self.addExecutionBlock(new_block)
 
         idx = 0

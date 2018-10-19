@@ -35,7 +35,8 @@ class Header(QtWidgets.QGraphicsItem):
         bbox = self.boundingRect()
 
         painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
-        painter.setBrush(self.fillColor)
+        # painter.setBrush(self.fillColor)
+        painter.setBrush(QtGui.QBrush(self.fillColor))
         painter.drawRoundedRect(bbox,
                                 self.node.roundness,
                                 self.node.roundness)

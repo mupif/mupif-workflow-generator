@@ -23,7 +23,7 @@
 
 import uuid
 import Header
-
+import json
 
 """
  data structure for workflow editor
@@ -40,6 +40,7 @@ import Header
 
 """
 from DataLink import *
+from Button import *
 
 
 class ExecutionBlock (QtWidgets.QGraphicsWidget):
@@ -48,7 +49,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     """
     list_of_models = []
 
-    def __init__(self, workflow, **kwargs):
+    def __init__(self, parent, workflow, **kwargs):
         QtWidgets.QGraphicsWidget.__init__(self, kwargs.get("parent", None))
         # self.blockList = [] blocks kept in self.childItems()
         # self.dataSlots = [] data slots kept in self.childItems()
@@ -73,7 +74,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.header = Header.Header(node=self, text=self.__class__.__name__)
         self.header.setPos(self.pos())
         self.header.setParentItem(self)
-        self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
         # General configuration.
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
@@ -84,6 +84,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.setAcceptDrops(True)
 
         self.children_visible = True
+
+        self.button_menu = Button(self, "Menu")
+
+        self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
     def generateInitCode(self):
         """Generate initialization block code"""
@@ -148,7 +152,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         blocks = []
         # for child in self.canvas.childItems():
         for child in self.childItems():
-            print (child)
+            # print(child)
             if isinstance(child, ExecutionBlock):
                 blocks.append(child)
                 if recursive:
@@ -209,7 +213,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     def sizeHint(self, which, constraint):
         return QtCore.QSizeF(self.w, self.h)
 
-    def updateChildrenPosition_temp(self):
+    def updateChildrenPosition(self):
 
         slot_widths = [k.w + self.spacing * 3 + helpers.getTextSize(k.displayName).width() for k in self.getDataSlots()]
         slot_widths.append(0)
@@ -220,7 +224,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         header_width = (2*self.spacing + helpers.getTextSize(self.header.text).width())
         width_child_max = max(header_width, max_slot_width)
-        height_children = self.header.h + self.spacing
+        height_children = self.header.h
+
+        self.button_menu.setY(height_children)
+        self.button_menu.setX(0)
+        # self.button_menu.w
+        height_children += self.button_menu.h+self.spacing
 
         # update data slots
         for elem in self.getDataSlots():
@@ -268,7 +277,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         for elem in self.getChildExecutionBlocks():
             elem.updateChildrenSizeAndPositionAndResizeSelf(child_color_id)
 
-        self.updateChildrenPosition_temp()
+        self.updateChildrenPosition()
 
     def callUpdatePositionOfWholeWorkflow(self):
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
@@ -289,13 +298,21 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
                                 self.roundness,
                                 self.roundness)
 
+    def geConnectedDataLinks(self):
+        answer = []
+        for dataslot in self.getDataSlots():
+            for datalink in dataslot.dataLinks:
+                answer.append(datalink)
+        return answer
+
+
     def updateDataLinksPath(self):
         # nodes = self.scene().selectedItems()
         nodes = self.getChildExecutionBlocks(None, True)
         for node in nodes:
-            for knob in node.getDataSlots():
-                for edge in knob.dataLinks:
-                    edge.updatePath()
+            for dataslot in node.getDataSlots():
+                for datalink in dataslot.dataLinks:
+                    datalink.updatePath()
 
     def mouseMoveEvent(self, event):
         """Update selected item's (and children's) positions as needed.
@@ -369,65 +386,30 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.addShowHideMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
-    # def resizeMe(self, w, h):
-    #     self.w = w
-    #     self.h = h
+    def getParentUUID(self):
+        if self.parentItem():
+            return self.parentItem().uuid
+        else:
+            return None
 
-    # def resizeForChildren(self):
-    #     print("\n\nRESIZING ---------------------------------\n\n")
-    #     rect = self.childrenBoundingRect()
-    #
-    #     self.resizeMe(rect.width(), rect.height())
-    #     # rect = QtCore.QRectF(10, 10, 100, 100)
-    #     # self.setGeometry(rect)
+    def getDictForJSON(self):
+        answer = {'classname': self.__class__.__name__, 'uuid': self.uuid, 'parent_uuid': self.getParentUUID()}
+        return answer
 
-    # def updateChildrenPosition(self, color_id=0):
-    #     print("\nPositioning child blocks of %s\n" % self.name)
-    #     if color_id:
-    #         self.fillColor = QtGui.QColor(220, 220, 220)
-    #         child_color_id = 0
-    #
-    #     else:
-    #         self.fillColor = QtGui.QColor(180, 180, 180)
-    #         child_color_id = 1
-    #
-    #     width_child_max = 0
-    #     height_children = self.header.h + 10
-    #     child_blocks = self.getChildExecutionBlocks()
-    #
-    #     child_slots = self.getDataSlots()
-    #     for slot in child_slots:
-    #         if slot.w > width_child_max:
-    #             width_child_max = slot.w
-    #         print("%s - w=%d" % (slot.name, slot.w))
-    #
-    #         height_children += slot.h + 10
-    #
-    #     for block in child_blocks:
-    #         block.updateChildrenPosition(child_color_id)
-    #         block.setY(height_children)
-    #         if block.w > width_child_max:
-    #             width_child_max = block.w
-    #         print("%s - w=%d" % (block.name, block.w))
-    #
-    #         height_children += block.h + 10
-    #         block.setX(20)
-    #
-    #     rect = self.childrenBoundingRect()
-    #     if rect.width() > width_child_max:
-    #         # if not isinstance(self, ExecutionBlock):
-    #         width_child_max = rect.width()
-    #     print("%s's rect - w=%d" % (self.name, rect.width()))
-    #
-    #     self.h = height_children + 10
-    #     self.w = width_child_max + 40
-    #
-    #     print("setting %s - w=%d" % (self.name, self.w))
-    #
-    #     for slot in child_slots:
-    #         if isinstance(slot, InputDataSlot):
-    #             slot.setX(20)
-    #         else:
-    #             slot.setX(self.w-slot.w-20)
-    #
-    #             print("\nEND of positioning child blocks of %s\n" % self.name)
+    def convertSelfToJSON(self):
+        return self.getDictForJSON()
+        # return json.dumps(self.getDictForJSON())
+
+    def convertToJSON(self):
+        return_json_array = []
+        return_json_array.append(self.convertSelfToJSON())
+
+        for elem in self.getDataSlots():
+            return_json_array.append(elem.convertSelfToJSON())
+
+        for elem in self.getChildExecutionBlocks():
+            return_json_array.extend(elem.convertToJSON())
+
+        return return_json_array
+
+

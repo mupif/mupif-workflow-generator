@@ -25,10 +25,10 @@
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
-
+import uuid
 import helpers
 from exceptions import DuplicateKnobNameError, KnobConnectionError
-
+import json
 import os
 
 windows = os.name == "nt"
@@ -98,6 +98,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.owner = owner
         self.type = type
         self.optional = optional
+        self.uuid = str(uuid.uuid4())
 
         # Qt
         self.x = 0
@@ -134,7 +135,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         events that first create an DataLink temporarily and only connect if the
         user releases on a valid target Knob.
         """
-        print("\n\n\ndataslot / 1\n\n\n")
+
         if slot is self:
             return
 
@@ -148,6 +149,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
         slot.addDataConnection(new_data_link)
 
         new_data_link.updatePath()
+
+    def scene(self):
+        return self.owner.workflow.getScene()
 
     def addDataConnection(self, data_link):
         """Add the given DataLink to the internal tracking list.
@@ -409,6 +413,21 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.addSlotMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
+    def getParentUUID(self):
+        if self.parentItem():
+            return self.parentItem().uuid
+        else:
+            return None
+
+    def getDictForJSON(self):
+        answer = {'classname': self.__class__.__name__, 'uuid': self.uuid, 'parent_uuid': self.getParentUUID()}
+        answer.update({'name': self.name})
+        return answer
+
+    def convertSelfToJSON(self):
+        return self.getDictForJSON()
+        # return json.dumps(self.getDictForJSON())
+
 
 # def ensureEdgeDirection(data_link):
 #     """Make sure the DataLink direction is as described below.
@@ -475,6 +494,7 @@ class DataLink(QtWidgets.QGraphicsPathItem):
         self.lineColor = QtGui.QColor(0, 0, 250)
         self.removalColor = QtCore.Qt.red
         self.thickness = 2
+        self.uuid = str(uuid.uuid4())
 
         self.source = None  # DataProvider slot
         self.target = None  # DataConsumer slot
@@ -560,4 +580,13 @@ class DataLink(QtWidgets.QGraphicsPathItem):
         if self.target == first_slot:
             return self.source
         return None
+
+    def getDictForJSON(self):
+        answer = {'classname': self.__class__.__name__, 'uuid': self.uuid}
+        answer.update({'ds1_uuid': self.source.uuid, 'ds2_uuid': self.target.uuid})
+        return answer
+
+    def convertSelfToJSON(self):
+        return self.getDictForJSON()
+        # return json.dumps(self.getDictForJSON())
 

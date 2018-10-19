@@ -11,6 +11,7 @@ from PyQt5 import QtWidgets
 
 import GraphView
 import Block
+# import Scene
 import os
 
 
@@ -19,9 +20,12 @@ class GraphWidget (QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent=parent)
 
+        # self.scene = Scene.Scene()
         self.scene = QtWidgets.QGraphicsScene()
         self.view = GraphView.GraphView()
         self.view.setScene(self.scene)
+
+        self.workflow = None
 
         self.view.setRenderHint(QtGui.QPainter.Antialiasing)
         self.view.setViewportUpdateMode(
@@ -58,104 +62,113 @@ class GraphWidget (QtWidgets.QWidget):
 
         super(GraphWidget, self).keyPressEvent(event)
 
+    def addWorkflowBlock(self):
+        if not self.workflow:
+            self.workflow = Block.WorkflowBlock(self, self.scene)
+            self.addNode(self.workflow)
+            return self.workflow
+        return None
+
     def addSceneMenuActions(self, menu):
         """Add scene specific actions like hold/fetch/save/load."""
         subMenu = menu.addMenu("Scene")
 
-        def _saveSceneAs():
-            # filePath, _ = QtGui.QFileDialog.getSaveFileName(
-            filePath, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self,
-                "Save Scene to JSON",
-                os.path.join(QtCore.QDir.currentPath(), "scene.json"),
-                "JSON File (*.json)"
-            )
-            if filePath:
-                # sceneData = serializer.serializeScene(self.scene)
-                sceneData = self.saveGeometry()
-                serializer.saveSceneToFile(sceneData, filePath)
+        # def _saveSceneAs():
+        #     # filePath, _ = QtGui.QFileDialog.getSaveFileName(
+        #     filePath, _ = QtWidgets.QFileDialog.getSaveFileName(
+        #         self,
+        #         "Save Scene to JSON",
+        #         os.path.join(QtCore.QDir.currentPath(), "scene.json"),
+        #         "JSON File (*.json)"
+        #     )
+        #     if filePath:
+        #         # sceneData = serializer.serializeScene(self.scene)
+        #         sceneData = self.saveGeometry()
+        #         serializer.saveSceneToFile(sceneData, filePath)
+        #
+        # saveToAction = subMenu.addAction("Save As...")
+        # saveToAction.triggered.connect(_saveSceneAs)
+        #
+        # def _loadSceneFrom():
+        #     filePath, _ = QtWidgets.QFileDialog.getOpenFileName(
+        #         self,
+        #         "Open Scene JSON File",
+        #         os.path.join(QtCore.QDir.currentPath(), "scene.json"),
+        #         "JSON File (*.json)"
+        #     )
+        #     if filePath:
+        #         sceneData = serializer.loadSceneFromFile(filePath)
+        #         if sceneData:
+        #             self.clearScene()
+        #             serializer.reconstructScene(self, sceneData)
+        #
+        # loadFromAction = subMenu.addAction("Open File...")
+        # loadFromAction.triggered.connect(_loadSceneFrom)
 
-        saveToAction = subMenu.addAction("Save As...")
-        saveToAction.triggered.connect(_saveSceneAs)
+        # def _mergeSceneFrom():
+        #     filePath, _ = QtWidgets.QFileDialog.getOpenFileName(
+        #         self,
+        #         "Open Scene JSON File",
+        #         os.path.join(QtCore.QDir.currentPath(), "scene.json"),
+        #         "JSON File (*.json)"
+        #     )
+        #     if filePath:
+        #         sceneData = serializer.mergeSceneFromFile(filePath)
+        #         if sceneData:
+        #             # Select only new nodes so they can be moved.
+        #             old_nodes = set(self.view.nodes())
+        #             serializer.reconstructScene(self, sceneData)
+        #             all_nodes = set(self.view.nodes())
+        #             merged_nodes = all_nodes - old_nodes
+        #             for node in merged_nodes:
+        #                 node.setSelected(True)
+        #
+        # mergeFromAction = subMenu.addAction("Merge File...")
+        # mergeFromAction.triggered.connect(_mergeSceneFrom)
+        #
+        # subMenu.addSeparator()
+        #
+        # def _storeCurrentScene():
+        #     self.lastStoredSceneData = serializer.serializeScene(self.scene)
+        #     QtWidgets.QMessageBox.information(self, "Hold",
+        #                                   "Scene state holded.")
+        #
+        # holdAction = subMenu.addAction("Hold")
+        # holdAction.triggered.connect(_storeCurrentScene)
+        #
+        # def _loadLastStoredScene():
+        #     if not self.lastStoredSceneData:
+        #         print("scene data is empty, nothing to load")
+        #         return
+        #     self.clearScene()
+        #     serializer.reconstructScene(self, self.lastStoredSceneData)
+        #     QtWidgets.QMessageBox.information(self, "Fetch",
+        #                                   "Scene state fetched.")
+        #
+        # fetchAction = subMenu.addAction("Fetch")
+        # fetchAction.triggered.connect(_loadLastStoredScene)
 
-        def _loadSceneFrom():
-            filePath, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self,
-                "Open Scene JSON File",
-                os.path.join(QtCore.QDir.currentPath(), "scene.json"),
-                "JSON File (*.json)"
-            )
-            if filePath:
-                sceneData = serializer.loadSceneFromFile(filePath)
-                if sceneData:
-                    self.clearScene()
-                    serializer.reconstructScene(self, sceneData)
-
-        loadFromAction = subMenu.addAction("Open File...")
-        loadFromAction.triggered.connect(_loadSceneFrom)
-
-        def _mergeSceneFrom():
-            filePath, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self,
-                "Open Scene JSON File",
-                os.path.join(QtCore.QDir.currentPath(), "scene.json"),
-                "JSON File (*.json)"
-            )
-            if filePath:
-                sceneData = serializer.mergeSceneFromFile(filePath)
-                if sceneData:
-                    # Select only new nodes so they can be moved.
-                    old_nodes = set(self.view.nodes())
-                    serializer.reconstructScene(self, sceneData)
-                    all_nodes = set(self.view.nodes())
-                    merged_nodes = all_nodes - old_nodes
-                    for node in merged_nodes:
-                        node.setSelected(True)
-
-        mergeFromAction = subMenu.addAction("Merge File...")
-        mergeFromAction.triggered.connect(_mergeSceneFrom)
-
-        subMenu.addSeparator()
-
-        def _storeCurrentScene():
-            self.lastStoredSceneData = serializer.serializeScene(self.scene)
-            QtWidgets.QMessageBox.information(self, "Hold",
-                                          "Scene state holded.")
-
-        holdAction = subMenu.addAction("Hold")
-        holdAction.triggered.connect(_storeCurrentScene)
-
-        def _loadLastStoredScene():
-            if not self.lastStoredSceneData:
-                print("scene data is empty, nothing to load")
-                return
-            self.clearScene()
-            serializer.reconstructScene(self, self.lastStoredSceneData)
-            QtWidgets.QMessageBox.information(self, "Fetch",
-                                          "Scene state fetched.")
-
-        fetchAction = subMenu.addAction("Fetch")
-        fetchAction.triggered.connect(_loadLastStoredScene)
-
-        subMenu.addSeparator()
+        # subMenu.addSeparator()
 
         clearSceneAction = subMenu.addAction("Clear")
         clearSceneAction.triggered.connect(self.clearScene)
 
-        subMenu.addSeparator()
+        # subMenu.addSeparator()
 
-        def _layoutScene():
-            # self.layout()
-            # QtWidgets.QWidget.setLayout(self.layout())
-            # autoLayout(self.scene)
-            self.view.redrawDataLinks()
-
-        layoutSceneAction = subMenu.addAction("Auto Layout")
-        layoutSceneAction.triggered.connect(_layoutScene)
+        # def _layoutScene():
+        #     # self.layout()
+        #     # QtWidgets.QWidget.setLayout(self.layout())
+        #     # autoLayout(self.scene)
+        #     self.view.redrawDataLinks()
+        #
+        # layoutSceneAction = subMenu.addAction("Auto Layout")
+        # layoutSceneAction.triggered.connect(_layoutScene)
 
         def _addWorkflowBlock():
-            new_workflow = Block.WorkflowBlock(self.scene)
-            self.addNode(new_workflow)
+            self.addWorkflowBlock()
+            # if not self.workflow:
+            #     self.workflow = Block.WorkflowBlock(self, self.scene)
+            #     self.addNode(self.workflow)
 
         addWorkflowBlockAction = subMenu.addAction("Add WorkflowBlock")
         addWorkflowBlockAction.triggered.connect(_addWorkflowBlock)
