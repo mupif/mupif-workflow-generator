@@ -11,8 +11,6 @@ from PyQt5 import QtWidgets
 
 import GraphView
 import Block
-# import Scene
-import os
 
 
 class GraphWidget (QtWidgets.QWidget):
@@ -21,11 +19,12 @@ class GraphWidget (QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent=parent)
 
         # self.scene = Scene.Scene()
-        self.scene = QtWidgets.QGraphicsScene()
         self.view = GraphView.GraphView()
-        self.view.setScene(self.scene)
 
-        self.workflow = None
+        self.scene = QtWidgets.QGraphicsScene()
+        self.view.setScene(self.scene)
+        self.workflow = Block.WorkflowBlock(None, self.scene)
+        self.addNode(self.workflow)
 
         self.view.setRenderHint(QtGui.QPainter.Antialiasing)
         self.view.setViewportUpdateMode(
@@ -49,6 +48,8 @@ class GraphWidget (QtWidgets.QWidget):
         """
         self.scene = QtWidgets.QGraphicsScene()
         self.view.setScene(self.scene)
+        self.workflow = Block.WorkflowBlock(None, self.scene)
+        self.addNode(self.workflow)
 
     def keyPressEvent(self, event):
         """React on various keys regarding Nodes."""
@@ -64,10 +65,13 @@ class GraphWidget (QtWidgets.QWidget):
 
     def addWorkflowBlock(self):
         if not self.workflow:
-            self.workflow = Block.WorkflowBlock(self, self.scene)
+            self.workflow = Block.WorkflowBlock(None, self.scene)
             self.addNode(self.workflow)
             return self.workflow
         return None
+
+    def getWorkflowBlock(self):
+        return self.workflow
 
     def addSceneMenuActions(self, menu):
         """Add scene specific actions like hold/fetch/save/load."""

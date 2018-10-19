@@ -24,5 +24,5 @@ class Application:
     def addWorkflow(self):
         return self.window.widget.addWorkflowBlock()
 
-    # def getWorkflowBlock(self):
-    #     return self.window.widget.scene.getWorkflowBlock()
+    def getWorkflowBlock(self):
+        return self.window.widget.getWorkflowBlock()

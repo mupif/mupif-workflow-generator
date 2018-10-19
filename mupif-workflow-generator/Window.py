@@ -41,6 +41,7 @@ class Window(QtWidgets.QMainWindow):
 
         def _new_blank_workflow():
             print("Generating new blank workflow")
+            self.widget.clearScene()
 
         def _save_to_json_file():
             print("saving workflow to JSON")

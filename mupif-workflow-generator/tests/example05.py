@@ -37,8 +37,8 @@ if __name__ == '__main__':
     application = Application()
 
     # workflow = WorkflowBlock(None, application.window.widget.scene)
-    workflow = application.window.widget.addWorkflowBlock()
-    # workflow = application.getWorkflowBlock()
+    # workflow = application.window.widget.addWorkflowBlock()
+    workflow = application.getWorkflowBlock()
 
     var1 = VariableBlock(workflow, workflow)
     var1.setValue(0.5)
@@ -62,8 +62,8 @@ if __name__ == '__main__':
 
     model1.getDataSlotWithName("ASTField").connectTo(model2.getDataSlotWithName("ASTField"))
     model2.getDataSlotWithName("TemperatureField").connectTo(model3.getDataSlotWithName("TemperatureField"))
-    var1.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("start_time"))
-    var2.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("target_time"))
+    # var1.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("start_time"))
+    # var2.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("target_time"))
 
     application.run()
 

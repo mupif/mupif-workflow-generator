@@ -65,7 +65,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.w = 10
         self.h = 10
 
-        self.spacing = 8
+        self.spacing = 10
         # self.margin = self.spacing
         self.roundness = 0
         self.fillColor = QtGui.QColor(220, 220, 220)
@@ -285,7 +285,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     def paint(self, painter, option, widget):
         """Draw the Node's container rectangle."""
         painter.setBrush(QtGui.QBrush(self.fillColor))
-        painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+        # painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+        painter.setPen(QtGui.QPen(QtGui.QColor(20, 20, 20)))
 
         # The bounding box is only as high as the header (we do this
         # to limit the area that is drag-enabled). Accommodate for that.
@@ -304,7 +305,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             for datalink in dataslot.dataLinks:
                 answer.append(datalink)
         return answer
-
 
     def updateDataLinksPath(self):
         # nodes = self.scene().selectedItems()

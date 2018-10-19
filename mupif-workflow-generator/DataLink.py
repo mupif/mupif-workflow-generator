@@ -98,7 +98,12 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.owner = owner
         self.type = type
         self.optional = optional
+        if isinstance(self, OutputDataSlot):
+            self.optional = True
         self.uuid = str(uuid.uuid4())
+
+        self.dataLinks = []  # data
+        self.hover = False
 
         # Qt
         self.x = 0
@@ -113,16 +118,28 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.displayName = self.name
 
         self.labelColor = QtGui.QColor(10, 10, 10)
-        self.fillColor = QtGui.QColor(130, 130, 130)
-        self.highlightColor = QtGui.QColor(255, 255, 0)
+
+        self.fillColor_not_connected = QtGui.QColor(255, 50, 50)
+        self.fillColor_regular = QtGui.QColor(50, 200, 50)
+        self.fillColor_optional = QtGui.QColor(50, 200, 50)
+        self.fillColor_highlight = QtGui.QColor(255, 255, 0)
+        self.fillColor = self.fillColor_regular
+        self.updateColor()
 
         # Temp store for DataLink currently being created.
         self.new_data_link = None
-        self.dataLinks = []  # data
         self.setAcceptHoverEvents(True)
 
     def __repr__(self):
         return "DataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
+
+    def updateColor(self):
+        if self.hover:
+            self.fillColor = self.fillColor_highlight
+        elif not self.optional and not self.connected():
+            self.fillColor = self.fillColor_not_connected
+        else:
+            self.fillColor = self.fillColor_optional
 
     def node(self):
         """The Node that this Slot belongs to is its parent item."""
@@ -150,6 +167,11 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
         new_data_link.updatePath()
 
+    def connected(self):
+        if len(self.dataLinks):
+            return True
+        return False
+
     def scene(self):
         return self.owner.workflow.getScene()
 
@@ -163,9 +185,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         Also make sure it is added to the QGraphicsScene, if not yet done.
         """
         self.dataLinks.append(data_link)
-        # print (self)
         scene = self.scene()
-        # print (scene)
         if data_link not in scene.items():
             scene.addItem(data_link)
 
@@ -193,13 +213,19 @@ class DataSlot(QtWidgets.QGraphicsItem):
         Store the old color in a new attribute, so it can be restored.
         """
         if toggle:
-            self._oldFillColor = self.fillColor
-            self.fillColor = self.highlightColor
+            self.hover = True
         else:
-            self.fillColor = self._oldFillColor
+            self.hover = False
+        self.updateColor()
+        # if toggle:
+        #     self._oldFillColor = self.fillColor
+        #     self.fillColor = self.fillColor_highlight
+        # else:
+        #     self.fillColor = self._oldFillColor
 
     def paint(self, painter, option, widget):
-        """Draw the Knob's shape and label."""
+        """Draw the DataSlot's shape and label."""
+        self.updateColor()
         bbox = self.boundingRect()
 
         # Draw a filled rectangle.
@@ -350,6 +376,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         that needs to be considered when connecting two Knobs.
         """
         pass
+        # TODO
 
     def destroy(self):
         """Remove this Slot, its DataLinks and associations."""
