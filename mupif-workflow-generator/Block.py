@@ -116,7 +116,7 @@ class WorkflowBlock(SequentialBlock):
     def convertDataLinksToJSON(self):
         return_json_array = []
         for datalink in self.getAllDataLinks():
-            return_json_array.append(datalink.convertSelfToJSON())
+            return_json_array.append(datalink.getDictForJSON())
         return return_json_array
 
     def convertToJSON(self):

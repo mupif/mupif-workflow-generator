@@ -46,7 +46,7 @@ class Window(QtWidgets.QMainWindow):
         def _save_to_json_file():
             print("saving workflow to JSON")
             json_code = self.widget.workflow.convertToJSON()
-            overall_json = {'elements': json_code, 'number_of_elements': len(json_code)}
+            overall_json = {'elements': json_code}
             json_to_be_saved = json.dumps(overall_json)
             file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,

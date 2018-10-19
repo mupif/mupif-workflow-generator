@@ -452,11 +452,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
         answer.update({'name': self.name})
         return answer
 
-    def convertSelfToJSON(self):
-        return self.getDictForJSON()
-        # return json.dumps(self.getDictForJSON())
-
-
 # def ensureEdgeDirection(data_link):
 #     """Make sure the DataLink direction is as described below.
 #
@@ -613,8 +608,4 @@ class DataLink(QtWidgets.QGraphicsPathItem):
         answer = {'classname': self.__class__.__name__, 'uuid': self.uuid}
         answer.update({'ds1_uuid': self.source.uuid, 'ds2_uuid': self.target.uuid})
         return answer
-
-    def convertSelfToJSON(self):
-        return self.getDictForJSON()
-        # return json.dumps(self.getDictForJSON())
 

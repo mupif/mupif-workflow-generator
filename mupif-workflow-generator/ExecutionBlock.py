@@ -397,16 +397,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         answer = {'classname': self.__class__.__name__, 'uuid': self.uuid, 'parent_uuid': self.getParentUUID()}
         return answer
 
-    def convertSelfToJSON(self):
-        return self.getDictForJSON()
-        # return json.dumps(self.getDictForJSON())
-
     def convertToJSON(self):
         return_json_array = []
-        return_json_array.append(self.convertSelfToJSON())
+        return_json_array.append(self.getDictForJSON())
 
         for elem in self.getDataSlots():
-            return_json_array.append(elem.convertSelfToJSON())
+            return_json_array.append(elem.getDictForJSON())
 
         for elem in self.getChildExecutionBlocks():
             return_json_array.extend(elem.convertToJSON())
