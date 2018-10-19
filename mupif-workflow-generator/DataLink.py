@@ -120,7 +120,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.labelColor = QtGui.QColor(10, 10, 10)
 
         self.fillColor_not_connected = QtGui.QColor(255, 50, 50)
-        self.fillColor_regular = QtGui.QColor(50, 200, 50)
+        self.fillColor_regular = QtGui.QColor(100, 100, 100)
         self.fillColor_optional = QtGui.QColor(50, 200, 50)
         self.fillColor_highlight = QtGui.QColor(255, 255, 0)
         self.fillColor = self.fillColor_regular
@@ -136,10 +136,12 @@ class DataSlot(QtWidgets.QGraphicsItem):
     def updateColor(self):
         if self.hover:
             self.fillColor = self.fillColor_highlight
-        elif not self.optional and not self.connected():
+        elif self.optional:
+            self.fillColor = self.fillColor_optional
+        elif not self.connected():
             self.fillColor = self.fillColor_not_connected
         else:
-            self.fillColor = self.fillColor_optional
+            self.fillColor = self.fillColor_regular
 
     def node(self):
         """The Node that this Slot belongs to is its parent item."""
@@ -295,23 +297,27 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
             node = self.parentItem()
             scene = node.scene()
+            widget = node.workflow.parent
+            view = widget.view
+            print(view)
             x = event.scenePos().x()
             y = event.scenePos().y()
             print(x)
             print(y)
             qtr = QtGui.QTransform()
+            self.new_data_link.destroy()
             target = scene.itemAt(x, y, qtr)
+            # target = scene.itemAt(x, y)
+            print("Target: ")
+            print(target)
 
             try:
-                if self.new_data_link and target:
-
-                    if self.new_data_link.source is target:
+                if target:
+                    if self is target:
                         raise KnobConnectionError(
                             "Can't connect a Knob to itself.")
 
                     if isinstance(target, DataSlot):
-                        # self.addDataSlot(OutputDataSlot())  # ???
-
                         if type(self) == type(target):
                             raise KnobConnectionError(
                                 "Can't connect Knobs of same type.")
@@ -327,16 +333,11 @@ class DataSlot(QtWidgets.QGraphicsItem):
                             if not diff:
                                 raise KnobConnectionError(
                                     "Connection already exists.")
-                                return
 
                         self.checkMaxConnections(target)
 
-                        print("finish DataLink")
-                        target.addDataConnection(self.new_data_link)
-                        self.new_data_link.target = target
-                        self.new_data_link.updatePath()
-                        self.finalizeDataLink(self.new_data_link)
-                        self.new_data_link = None
+                        self.connectTo(target)
+
                         return
 
                 raise KnobConnectionError(

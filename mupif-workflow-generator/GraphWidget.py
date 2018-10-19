@@ -23,8 +23,10 @@ class GraphWidget (QtWidgets.QWidget):
 
         self.scene = QtWidgets.QGraphicsScene()
         self.view.setScene(self.scene)
-        self.workflow = Block.WorkflowBlock(None, self.scene)
+        self.workflow = Block.WorkflowBlock(self, self.scene)
         self.addNode(self.workflow)
+
+        # self.layout = QtWidgets.QVBoxLayout()
 
         self.view.setRenderHint(QtGui.QPainter.Antialiasing)
         self.view.setViewportUpdateMode(
@@ -48,7 +50,7 @@ class GraphWidget (QtWidgets.QWidget):
         """
         self.scene = QtWidgets.QGraphicsScene()
         self.view.setScene(self.scene)
-        self.workflow = Block.WorkflowBlock(None, self.scene)
+        self.workflow = Block.WorkflowBlock(self, self.scene)
         self.addNode(self.workflow)
 
     def keyPressEvent(self, event):
@@ -65,7 +67,7 @@ class GraphWidget (QtWidgets.QWidget):
 
     def addWorkflowBlock(self):
         if not self.workflow:
-            self.workflow = Block.WorkflowBlock(None, self.scene)
+            self.workflow = Block.WorkflowBlock(self, self.scene)
             self.addNode(self.workflow)
             return self.workflow
         return None

@@ -55,6 +55,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         # self.dataSlots = [] data slots kept in self.childItems()
         self.workflow = workflow
         self.name = kwargs.get("name", "ExecutionBlock")
+        self.parent = parent
 
         # This unique id is useful for serialization/reconstruction.
         self.uuid = str(uuid.uuid4())
