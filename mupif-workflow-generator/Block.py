@@ -55,6 +55,7 @@ class WorkflowBlock(SequentialBlock):
         SequentialBlock.__init__(self, parent, self)
         self.name = "WorkflowBlock"
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
+        self.widget = parent
 
     def getScene(self):
         return self.loc_scene
@@ -62,7 +63,7 @@ class WorkflowBlock(SequentialBlock):
     def getAllDataLinks(self):
         answer = []
         for block in self.getChildExecutionBlocks(None, True):
-            for datalink in block.geConnectedDataLinks():
+            for datalink in block.getConnectedDataLinks():
                 if datalink not in answer:
                     answer.append(datalink)
         return answer
@@ -124,6 +125,55 @@ class WorkflowBlock(SequentialBlock):
         return_json_array.extend(self.convertDataLinksToJSON())
         return return_json_array
 
+    def loadFromJSON(self, json_data):
+        for e in json_data['elements']:
+            if e['classname'] == 'WorkflowBlock':
+                self.uuid = e['uuid']
+                break
+        for e in json_data['elements']:
+            print("importing %s" % e['classname'])
+
+            if e['classname'] == 'TimeLoopBlock':
+                new_e = TimeLoopBlock(None, self)
+                new_e.uuid = e['uuid']
+                e_parent_e = self.widget.getNodeById(e['parent_uuid'])
+                new_e.parent = e_parent_e
+                new_e.setParentItem(e_parent_e)
+
+            if e['classname'] == 'VariableBlock':
+                new_e = VariableBlock(None, self)
+                new_e.uuid = e['uuid']
+                e_parent_e = self.widget.getNodeById(e['parent_uuid'])
+                new_e.parent = e_parent_e
+                new_e.setParentItem(e_parent_e)
+                new_e.setValue(e['value'])
+
+            for model in ExecutionBlock.list_of_models:
+                print("Comparing: '%s' == '%s'" % (e['classname'], model.__name__))
+                if e['classname'] == model.__name__:
+                    print("Model found in list...")
+                    new_e = model(None, self)
+                    new_e.uuid = e['uuid']
+                    e_parent_e = self.widget.getNodeById(e['parent_uuid'])
+                    new_e.parent = e_parent_e
+                    new_e.setParentItem(e_parent_e)
+
+            if e['classname'] == 'InputDataSlot' or e['classname'] == 'OutputDataSlot':
+                ds = self.getDataSlot(parent_uuid=e['parent_uuid'], name=e['name'], recursive_search=True)
+                if ds:
+                    ds.setUUID(e['uuid'])
+
+            if e['classname'] == 'DataLink':
+                ds1 = self.getDataSlot(uuid=e['ds1_uuid'], recursive_search=True)
+                ds2 = self.getDataSlot(uuid=e['ds2_uuid'], recursive_search=True)
+                if ds1 and ds2:
+                    if (isinstance(ds1, InputDataSlot) and isinstance(ds2, OutputDataSlot)) or (isinstance(ds1, OutputDataSlot) and isinstance(ds2, InputDataSlot)):
+                        ds1.connectTo(ds2)
+                else:
+                    print("Cannot connect...")
+
+        self.updateChildrenSizeAndPositionAndResizeSelf()
+        self.widget.view.redrawDataLinks()
 
 class VariableBlock(ExecutionBlock):
     def __init__(self, parent, workflow):

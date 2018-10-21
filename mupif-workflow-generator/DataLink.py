@@ -201,6 +201,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
         if data_link in scene.items():
             scene.removeItem(data_link)
 
+    def setUUID(self, uuid):
+        self.uuid = uuid
+
     def boundingRect(self):
         """Return the bounding box of this Knob."""
         rect = QtCore.QRectF(self.x,

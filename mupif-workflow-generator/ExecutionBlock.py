@@ -113,11 +113,36 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             slots = list(filter(lambda k: k.__class__ is cls, slots))
         return slots
 
+    def getAllDataSlots(self, recursive=False):
+        array = self.getDataSlots()
+        if recursive:
+            for block in self.getChildExecutionBlocks():
+                array.extend(block.getAllDataSlots(True))
+        return array
+
+    def getDataSlotWithUUID(self, uuid, recursive_search=False):
+        for slot in self.getAllDataSlots(recursive_search):
+            if slot.uuid == uuid:
+                return slot
+        return None
+
     def getDataSlotWithName(self, name):
         """Return matching data slot by its name, None otherwise."""
         for slot in self.getDataSlots():
             if slot.name == name:
                 return slot
+        return None
+
+    def getParentUUID(self):
+        if self.parent:
+            return self.parent.uuid
+        return None
+
+    def getDataSlot(self, name=None, uuid=None, parent_uuid=None, recursive_search=False):
+        if name or uuid or parent_uuid:
+            for slot in self.getAllDataSlots(recursive_search):
+                if (not name or (slot.name == name and slot.name)) and (not uuid or (slot.uuid == uuid and slot.uuid)) and (not parent_uuid or (slot.getParentUUID() == parent_uuid and slot.getParentUUID())):
+                    return slot
         return None
 
     def addDataSlot(self, slot):
@@ -300,7 +325,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
                                 self.roundness,
                                 self.roundness)
 
-    def geConnectedDataLinks(self):
+    def getConnectedDataLinks(self):
         answer = []
         for dataslot in self.getDataSlots():
             for datalink in dataslot.dataLinks:

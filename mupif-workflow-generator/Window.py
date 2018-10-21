@@ -71,9 +71,10 @@ class Window(QtWidgets.QMainWindow):
                 f = open(file_path, "r")
                 json_loaded = f.read()
                 f.close()
-                print(json_loaded)
                 json_data = json.loads(json_loaded)
-                print(json_data['number_of_elements'])
+
+                self.widget.clearScene()
+                self.widget.workflow.loadFromJSON(json_data)
 
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
