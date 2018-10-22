@@ -61,7 +61,6 @@ class Header(QtWidgets.QGraphicsItem):
 
     def destroy(self):
         """Remove this object from the scene and delete it."""
-        print("destroy header:", self)
         scene = self.node.scene()
         scene.removeItem(self)
         del self

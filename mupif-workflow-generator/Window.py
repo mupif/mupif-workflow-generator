@@ -40,11 +40,9 @@ class Window(QtWidgets.QMainWindow):
         main_menu = self.menuBar()
 
         def _new_blank_workflow():
-            print("Generating new blank workflow")
             self.widget.clearScene()
 
         def _save_to_json_file():
-            print("saving workflow to JSON")
             json_code = self.widget.workflow.convertToJSON()
             overall_json = {'elements': json_code}
             json_to_be_saved = json.dumps(overall_json)
@@ -60,7 +58,6 @@ class Window(QtWidgets.QMainWindow):
                 f.close()
 
         def _load_from_json_file():
-            print("loading workflow from JSON")
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self,
                 "Open Workflow JSON File",
@@ -77,7 +74,6 @@ class Window(QtWidgets.QMainWindow):
                 self.widget.workflow.loadFromJSON(json_data)
 
         def _load_models():
-            print("loading models from Python files")
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self,
                 "Open Python File",
@@ -85,8 +81,8 @@ class Window(QtWidgets.QMainWindow):
                 "Python File (*.py)"
             )
             if file_path:
-                print("Loading Model from file: %s" % file_path)
                 Block.ModelBlock.loadModelsFromGivenFile(file_path)
+                self.updateMenuListOfAPI()
 
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
@@ -113,23 +109,23 @@ class Window(QtWidgets.QMainWindow):
         workflow_menu.addAction(workflow_action_save_to_file)
         workflow_menu.addAction(workflow_action_load_from_file)
         #
-        apis_menu = main_menu.addMenu('APIs')
+        self.apis_menu = main_menu.addMenu('APIs')
         apis_action_load_from_file = QtWidgets.QAction('Load API from file', self)
         apis_action_load_from_file.triggered.connect(_load_models)
-        apis_action_show_list = QtWidgets.QAction('List of available APIs', self)
-        apis_menu.addAction(apis_action_load_from_file)
-        apis_menu.addAction(apis_action_show_list)
+        self.apis_menu.addAction(apis_action_load_from_file)
 
-        # fileMenu.triggered.connect(sys.exit)
+        self.apis_list_of_models = self.apis_menu.addMenu('List of available APIs')
+        for api in Block.ExecutionBlock.list_of_models:
+            action = QtWidgets.QAction(api.__name__, self)
+            self.apis_list_of_models.addAction(action)
 
         self.show()
 
-    # def home(self):
-    #     btn = QtWidgets.QPushButton("Quit", self)
-    #     btn.clicked.connect(self.close_application)
-    #     btn.resize(btn.minimumSizeHint())
-    #     btn.move(10, 30)
-    #     self.show()
+    def updateMenuListOfAPI(self):
+        self.apis_list_of_models.clear()
+        for api in Block.ExecutionBlock.list_of_models:
+            action = QtWidgets.QAction(api.__name__, self)
+            self.apis_list_of_models.addAction(action)
 
     def close_application(self):\
         sys.exit()

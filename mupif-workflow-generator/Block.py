@@ -149,9 +149,7 @@ class WorkflowBlock(SequentialBlock):
                 new_e.setValue(e['value'])
 
             for model in ExecutionBlock.list_of_models:
-                print("Comparing: '%s' == '%s'" % (e['classname'], model.__name__))
                 if e['classname'] == model.__name__:
-                    print("Model found in list...")
                     new_e = model(None, self)
                     new_e.uuid = e['uuid']
                     e_parent_e = self.widget.getNodeById(e['parent_uuid'])
@@ -169,8 +167,6 @@ class WorkflowBlock(SequentialBlock):
                 if ds1 and ds2:
                     if (isinstance(ds1, InputDataSlot) and isinstance(ds2, OutputDataSlot)) or (isinstance(ds1, OutputDataSlot) and isinstance(ds2, InputDataSlot)):
                         ds1.connectTo(ds2)
-                else:
-                    print("Cannot connect...")
 
         self.updateChildrenSizeAndPositionAndResizeSelf()
         self.widget.view.redrawDataLinks()
@@ -242,12 +238,11 @@ class ModelBlock(ExecutionBlock):
     def loadModelsFromGivenFile(full_path):
         mod_name, file_ext = os.path.splitext(os.path.split(full_path)[-1])
         py_mod = imp.load_source(mod_name, full_path)
-        print(dir(py_mod))
         for mod in dir(py_mod):
             if not mod[0] == "_":
-                print(mod)
                 my_class = getattr(py_mod, mod)
-                ExecutionBlock.list_of_models.append(my_class)
+                if my_class.__name__ not in ExecutionBlock.getListOfModelNames():
+                    ExecutionBlock.list_of_models.append(my_class)
 
 
 class TimeLoopBlock(SequentialBlock):

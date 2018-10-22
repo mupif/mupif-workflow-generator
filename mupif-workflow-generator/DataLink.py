@@ -92,7 +92,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
     Class describing input/output parameter of block
     """
     def __init__(self, owner, name, type, optional=False, parent=None, **kwargs):
-        print("\n\n\ndataslot / 0\n\n\n")
         QtWidgets.QGraphicsItem.__init__(self, parent)
         self.name = name
         self.owner = owner
@@ -284,7 +283,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
     def mouseMoveEvent(self, event):
         """Update DataLink position when currently creating one."""
         if self.new_data_link:
-            print("update DataLink")
             self.new_data_link.targetPos = event.scenePos()
             self.new_data_link.updatePath()
 
@@ -302,17 +300,11 @@ class DataSlot(QtWidgets.QGraphicsItem):
             scene = node.scene()
             widget = node.workflow.parent
             view = widget.view
-            print(view)
             x = event.scenePos().x()
             y = event.scenePos().y()
-            print(x)
-            print(y)
             qtr = QtGui.QTransform()
             self.new_data_link.destroy()
             target = scene.itemAt(x, y, qtr)
-            # target = scene.itemAt(x, y)
-            print("Target: ")
-            print(target)
 
             try:
                 if target:

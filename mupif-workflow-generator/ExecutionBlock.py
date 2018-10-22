@@ -139,10 +139,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
                 return slot
         return None
 
-    def getParentUUID(self):
-        if self.parent:
-            return self.parent.uuid
-        return None
+    # def getParentUUID(self):
+    #     if self.parent:
+    #         return self.parent.uuid
+    #     return None
 
     def getDataSlot(self, name=None, uuid=None, parent_uuid=None, recursive_search=False):
         if name or uuid or parent_uuid:
@@ -354,7 +354,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         visually lose their connection until an attached Node is moved
         individually.
         """
-        print("move:", self)
         nodes = self.scene().selectedItems()
         for node in nodes:
             for knob in node.getDataSlots():
@@ -365,7 +364,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     def destroy(self):
         """Remove this Node, its Header, Knobs and connected Edges."""
         # TODO fix it
-        print("destroy node:", self)
         self.header.destroy()
         for slot in self.dataSlots():
             slot.destroy()
@@ -439,5 +437,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             return_json_array.extend(elem.convertToJSON())
 
         return return_json_array
+
+    @staticmethod
+    def getListOfModelNames():
+        array = [m.__name__ for m in ExecutionBlock.list_of_models]
+        return array
 
 
