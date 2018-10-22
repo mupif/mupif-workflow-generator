@@ -100,6 +100,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     def getChildItems(self):
         return self.childItems()
 
+    def updateHeaderText(self, val=None):
+        if val:
+            self.header.text = val
+        else:
+            self.header.text = self.name
+
     def getDataSlots(self, cls = None):
         """Return a list of data slots.
             If the optional `cls` is specified, return only Slots of that class.

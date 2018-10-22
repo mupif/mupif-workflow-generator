@@ -1,53 +1,69 @@
-# import PyQt5
-# from PyQt5 import QtGui
-# from PyQt5 import QtCore
-from PyQt5 import QtWidgets
-
 import sys
-
 # custom for each user
 sys.path.insert(0, "/home/user/Projects/mupif-workflow-generator/mupif-workflow-generator")
-import Block
-import GraphWidget
+from Application import *
 
 
-class ModelA(Block.ModelBlock):
-    def __init__(self, workflow):
-        Block.ModelBlock.__init__(self, workflow, None, "HeatSolver")
+class FireDynamicSimulator(ModelBlock):
+    def __init__(self, parent, workflow):
+        ModelBlock.__init__(self, parent, workflow, None, "FireDynamicsSimulator")
+        self.addDataSlot(OutputDataSlot(self, "ASTField", "field"))
 
 
-class ModelB(Block.ModelBlock):
-    def __init__(self, workflow):
-        Block.ModelBlock.__init__(self, workflow, None, "MechanicalSolver")
+ExecutionBlock.list_of_models.append(FireDynamicSimulator)
 
 
-def printCode(code, level=-1):
-    if isinstance(code, str):
-        print("%s%s" % ('\t'*level, code))
-    else:
-        for line in code:
-            printCode(line, level+1)
+class HeatSolver(ModelBlock):
+    def __init__(self, parent, workflow):
+        ModelBlock.__init__(self, parent, workflow, None, "HeatSolver")
+        self.addDataSlot(InputDataSlot(self, "ASTField", "field"))
+        self.addDataSlot(OutputDataSlot(self, "TemperatureField", "field"))
 
 
-#
-# here we set up the workflow model directly
-# the other possibility is to create workflow model from file (json)
-# (not yet available)
-#
-def test():
-    app = QtWidgets.QApplication([])
-    graph = GraphWidget.GraphWidget()
-    graph.setGeometry(100, 100, 800, 600)
-    graph.show()
+ExecutionBlock.list_of_models.append(HeatSolver)
 
 
-    print(graph.scene.items())
-    for i in list(graph.scene.items()):
-        print(i.scene())
-    # graph.addNode(nodeInt1)
+class MechanicalSolver(ModelBlock):
+    def __init__(self, parent, workflow):
+        ModelBlock.__init__(self, parent, workflow, None, "MechanicalSolver")
+        self.addDataSlot(InputDataSlot(self, "TemperatureField", "field"))
+        self.addDataSlot(OutputDataSlot(self, "DisplacementField", "field"))
 
-    app.exec_()
 
+ExecutionBlock.list_of_models.append(MechanicalSolver)
 
 if __name__ == '__main__':
-    test()
+
+    application = Application()
+
+    # workflow = WorkflowBlock(None, application.window.widget.scene)
+    # workflow = application.window.widget.addWorkflowBlock()
+    workflow = application.getWorkflowBlock()
+
+    var1 = VariableBlock(workflow, workflow)
+    var1.setValue(0.5)
+    workflow.addExecutionBlock(var1)
+
+    var2 = VariableBlock(workflow, workflow)
+    var2.setValue(10.0)
+    workflow.addExecutionBlock(var2)
+
+    timeloop = TimeLoopBlock(workflow, workflow)
+
+    model1 = FireDynamicSimulator(timeloop, workflow)
+    model2 = HeatSolver(timeloop, workflow)
+    model3 = MechanicalSolver(timeloop, workflow)
+
+    timeloop.addExecutionBlock(model1)
+    timeloop.addExecutionBlock(model2)
+    timeloop.addExecutionBlock(model3)
+
+    workflow.addExecutionBlock(timeloop)
+
+    model1.getDataSlotWithName("ASTField").connectTo(model2.getDataSlotWithName("ASTField"))
+    model2.getDataSlotWithName("TemperatureField").connectTo(model3.getDataSlotWithName("TemperatureField"))
+    # var1.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("start_time"))
+    # var2.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("target_time"))
+
+    application.run()
+

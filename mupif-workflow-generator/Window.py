@@ -76,6 +76,18 @@ class Window(QtWidgets.QMainWindow):
                 self.widget.clearScene()
                 self.widget.workflow.loadFromJSON(json_data)
 
+        def _load_models():
+            print("loading models from Python files")
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self,
+                "Open Python File",
+                os.path.join(QtCore.QDir.currentPath(), "model.py"),
+                "Python File (*.py)"
+            )
+            if file_path:
+                print("Loading Model from file: %s" % file_path)
+                Block.ModelBlock.loadModelsFromGivenFile(file_path)
+
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
         #
@@ -103,6 +115,7 @@ class Window(QtWidgets.QMainWindow):
         #
         apis_menu = main_menu.addMenu('APIs')
         apis_action_load_from_file = QtWidgets.QAction('Load API from file', self)
+        apis_action_load_from_file.triggered.connect(_load_models)
         apis_action_show_list = QtWidgets.QAction('List of available APIs', self)
         apis_menu.addAction(apis_action_load_from_file)
         apis_menu.addAction(apis_action_show_list)

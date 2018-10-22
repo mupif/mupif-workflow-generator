@@ -21,7 +21,7 @@
 # Boston, MA  02110-1301  USA
 #
 
-
+import imp
 from SequentialBlock import *
 
 
@@ -175,6 +175,7 @@ class WorkflowBlock(SequentialBlock):
         self.updateChildrenSizeAndPositionAndResizeSelf()
         self.widget.view.redrawDataLinks()
 
+
 class VariableBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
@@ -215,7 +216,7 @@ class VariableBlock(ExecutionBlock):
 
 
 class ModelBlock(ExecutionBlock):
-    def __init__(self, parent, workflow, model, model_name):
+    def __init__(self, parent, workflow, model=None, model_name=None):
         ExecutionBlock.__init__(self, parent, workflow)
         self.model = model
         self.name = model_name
@@ -228,6 +229,25 @@ class ModelBlock(ExecutionBlock):
 
     def generateCode(self):
         return ["%s.solveStep(tstep)" % self.name]
+
+    def constructFromMetaData(self, metadata):
+        self.name = self.model = metadata['name']
+        for slot in metadata['inputs']:
+            self.addDataSlot(InputDataSlot(self, slot['name'], slot['type'], slot['optional']))
+        for slot in metadata['outputs']:
+            self.addDataSlot(OutputDataSlot(self, slot['name'], slot['type'], slot['optional']))
+        self.updateHeaderText()
+
+    @staticmethod
+    def loadModelsFromGivenFile(full_path):
+        mod_name, file_ext = os.path.splitext(os.path.split(full_path)[-1])
+        py_mod = imp.load_source(mod_name, full_path)
+        print(dir(py_mod))
+        for mod in dir(py_mod):
+            if not mod[0] == "_":
+                print(mod)
+                my_class = getattr(py_mod, mod)
+                ExecutionBlock.list_of_models.append(my_class)
 
 
 class TimeLoopBlock(SequentialBlock):
@@ -274,8 +294,13 @@ class TimeLoopBlock(SequentialBlock):
         sub_menu = menu.addMenu("Add")
 
         def _addModelBlock(idx):
-            new_block = ExecutionBlock.list_of_models[idx](self, self.workflow)
+            new_block_class = ExecutionBlock.list_of_models[idx]()
+            new_block = ModelBlock(self, self.workflow)
+            new_block.constructFromMetaData(new_block_class.getMetaData())
             self.addExecutionBlock(new_block)
+
+            # new_block = ExecutionBlock.list_of_models[idx](self, self.workflow)
+            # self.addExecutionBlock(new_block)
 
         idx = 0
         for model in ExecutionBlock.list_of_models:
