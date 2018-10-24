@@ -1,6 +1,5 @@
 import sys
-# custom for each user
-sys.path.insert(0, "/home/user/Projects/mupif-workflow-generator/mupif-workflow-generator")
+sys.path.insert(0, "..")
 from Application import *
 
 
