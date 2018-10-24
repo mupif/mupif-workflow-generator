@@ -111,7 +111,6 @@ class WorkflowBlock(SequentialBlock):
         temp = QtWidgets.QWidget()
         menu = QtWidgets.QMenu(temp)
         self.addAddBlockMenuActions(menu)
-        self.addShowHideMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
     def convertDataLinksToJSON(self):
@@ -181,6 +180,7 @@ class VariableBlock(ExecutionBlock):
         self.value = 0.
         self.addDataSlot(OutputDataSlot(self, "value", float, False))
         self.getDataSlots()[0].displayName = "%le" % self.value
+        self.variable_name = ""
 
     def addVariableBlockMenuActions(self, menu):
         sub_menu = menu.addMenu("Modify")
@@ -198,6 +198,7 @@ class VariableBlock(ExecutionBlock):
     def contextMenuEvent(self, event):
         temp = QtWidgets.QWidget()
         menu = QtWidgets.QMenu(temp)
+        self.addMoveMenuActions(menu)
         self.addVariableBlockMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
@@ -317,8 +318,8 @@ class TimeLoopBlock(SequentialBlock):
     def contextMenuEvent(self, event):
         temp = QtWidgets.QWidget()
         menu = QtWidgets.QMenu(temp)
+        self.addMoveMenuActions(menu)
         self.addAddBlockMenuActions(menu)
-        self.addShowHideMenuActions(menu)
         self.addChildBlocksMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 

@@ -372,48 +372,23 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         scene.removeItem(self)
         del self
 
-    def addAddSlotMenuActions(self, menu):
-        sub_menu = menu.addMenu("Add data slot")
+    def addMoveMenuActions(self, menu):
+        def _move_up():
+            pass
 
-        def _addInputSlot():
-            self.addDataSlot(InputDataSlot(self, "new slot %d" % len(self.getDataSlots()), float, False))
+        def _move_down():
+            pass
 
-        add_input_slot_action = sub_menu.addAction("Input slot")
-        add_input_slot_action.triggered.connect(_addInputSlot)
-
-        def _addOutputSlot():
-            self.addDataSlot(OutputDataSlot(self, "new slot %d" % len(self.getDataSlots()), float, False))
-
-        add_output_slot_action = sub_menu.addAction("Output slot")
-        add_output_slot_action.triggered.connect(_addOutputSlot)
-
-    def addShowHideMenuActions(self, menu):
-        def _showHideChildren():
-            if self.children_visible:
-                self.children_visible = False
-            else:
-                self.children_visible = True
-
-            blocks = self.childItems()
-            i = 0
-            for block in blocks:
-                if i and ((not isinstance(block, InputDataSlot) and not isinstance(block, OutputDataSlot)) or self.children_visible):
-                    block.setVisible(self.children_visible)
-                i += 1
-
-        if self.children_visible:
-            show_hide_text = "Hide"
-        else:
-            show_hide_text = "Show"
-
-        add_show_hide_children = menu.addAction("%s child elements" % show_hide_text)
-        add_show_hide_children.triggered.connect(_showHideChildren)
+        move_menu = menu.addMenu("Move")
+        move_up = move_menu.addAction("Up")
+        move_up.triggered.connect(_move_up)
+        move_down = move_menu.addAction("Down")
+        move_down.triggered.connect(_move_down)
 
     def contextMenuEvent(self, event):
         temp = QtWidgets.QWidget()
         menu = QtWidgets.QMenu(temp)
-        self.addAddSlotMenuActions(menu)
-        self.addShowHideMenuActions(menu)
+        self.addMoveMenuActions(menu)
         menu.exec_(QtGui.QCursor.pos())
 
     def getParentUUID(self):

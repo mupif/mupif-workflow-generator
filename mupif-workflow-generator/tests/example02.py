@@ -1,42 +1,9 @@
-import sys
-sys.path.insert(0, "..")
+from example01_models import *
 from Application import *
-
-
-class FireDynamicSimulator(ModelBlock):
-    def __init__(self, parent, workflow):
-        ModelBlock.__init__(self, parent, workflow, None, "FireDynamicsSimulator")
-        self.addDataSlot(OutputDataSlot(self, "ASTField", "field"))
-
-
-ExecutionBlock.list_of_models.append(FireDynamicSimulator)
-
-
-class HeatSolver(ModelBlock):
-    def __init__(self, parent, workflow):
-        ModelBlock.__init__(self, parent, workflow, None, "HeatSolver")
-        self.addDataSlot(InputDataSlot(self, "ASTField", "field"))
-        self.addDataSlot(OutputDataSlot(self, "TemperatureField", "field"))
-
-
-ExecutionBlock.list_of_models.append(HeatSolver)
-
-
-class MechanicalSolver(ModelBlock):
-    def __init__(self, parent, workflow):
-        ModelBlock.__init__(self, parent, workflow, None, "MechanicalSolver")
-        self.addDataSlot(InputDataSlot(self, "TemperatureField", "field"))
-        self.addDataSlot(OutputDataSlot(self, "DisplacementField", "field"))
-
-
-ExecutionBlock.list_of_models.append(MechanicalSolver)
 
 if __name__ == '__main__':
 
     application = Application()
-
-    # workflow = WorkflowBlock(None, application.window.widget.scene)
-    # workflow = application.window.widget.addWorkflowBlock()
     workflow = application.getWorkflowBlock()
 
     var1 = VariableBlock(workflow, workflow)
@@ -49,9 +16,16 @@ if __name__ == '__main__':
 
     timeloop = TimeLoopBlock(workflow, workflow)
 
-    model1 = FireDynamicSimulator(timeloop, workflow)
-    model2 = HeatSolver(timeloop, workflow)
-    model3 = MechanicalSolver(timeloop, workflow)
+    model_c_1 = FireDynamicSimulator()
+    model_c_2 = HeatSolver()
+    model_c_3 = MechanicalSolver()
+
+    model1 = ModelBlock(timeloop, workflow)
+    model1.constructFromMetaData(model_c_1.getMetaData())
+    model2 = ModelBlock(timeloop, workflow)
+    model2.constructFromMetaData(model_c_2.getMetaData())
+    model3 = ModelBlock(timeloop, workflow)
+    model3.constructFromMetaData(model_c_3.getMetaData())
 
     timeloop.addExecutionBlock(model1)
     timeloop.addExecutionBlock(model2)
