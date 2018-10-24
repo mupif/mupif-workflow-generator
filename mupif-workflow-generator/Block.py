@@ -150,7 +150,10 @@ class WorkflowBlock(SequentialBlock):
 
             for model in ExecutionBlock.list_of_models:
                 if e['classname'] == model.__name__:
-                    new_e = model(None, self)
+
+                    new_block_class = model()
+                    new_e = ModelBlock(self, self.workflow)
+                    new_e.constructFromMetaData(new_block_class.getMetaData())
                     new_e.uuid = e['uuid']
                     e_parent_e = self.widget.getNodeById(e['parent_uuid'])
                     new_e.parent = e_parent_e
@@ -293,9 +296,6 @@ class TimeLoopBlock(SequentialBlock):
             new_block = ModelBlock(self, self.workflow)
             new_block.constructFromMetaData(new_block_class.getMetaData())
             self.addExecutionBlock(new_block)
-
-            # new_block = ExecutionBlock.list_of_models[idx](self, self.workflow)
-            # self.addExecutionBlock(new_block)
 
         idx = 0
         for model in ExecutionBlock.list_of_models:
