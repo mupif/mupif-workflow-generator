@@ -1,7 +1,9 @@
+from mupif import Application as mupifApplication
 
-class FireDynamicSimulator:
+
+class FireDynamicSimulator(mupifApplication.Application):
     def __init__(self):
-        pass
+        mupifApplication.Application.__init__(self)
 
     def getMetaData(self):
         metadata = {'name': 'FireDynamicsSimulator', 'type': 'CFD', 'inputs': [], 'outputs': [
@@ -10,9 +12,9 @@ class FireDynamicSimulator:
         return metadata
 
 
-class HeatSolver:
+class HeatSolver(mupifApplication.Application):
     def __init__(self):
-        pass
+        mupifApplication.Application.__init__(self)
 
     def getMetaData(self):
         metadata = {'name': 'HeatSolver', 'type': 'Thermal analysis',
@@ -23,9 +25,9 @@ class HeatSolver:
         return metadata
 
 
-class MechanicalSolver:
+class MechanicalSolver(mupifApplication.Application):
     def __init__(self):
-        pass
+        mupifApplication.Application.__init__(self)
 
     def getMetaData(self):
         metadata = {'name': 'MechanicalSolver', 'type': 'Mechanical analysis',

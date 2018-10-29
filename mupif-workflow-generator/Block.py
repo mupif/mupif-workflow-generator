@@ -21,6 +21,8 @@
 # Boston, MA  02110-1301  USA
 #
 
+from mupif import Application as mupifApplication
+import inspect
 import imp
 from SequentialBlock import *
 
@@ -245,8 +247,9 @@ class ModelBlock(ExecutionBlock):
         for mod in dir(py_mod):
             if not mod[0] == "_":
                 my_class = getattr(py_mod, mod)
-                if my_class.__name__ not in ExecutionBlock.getListOfModelNames():
-                    ExecutionBlock.list_of_models.append(my_class)
+                if my_class.__name__ not in ExecutionBlock.getListOfModelNames() and inspect.isclass(my_class):
+                    if issubclass(my_class, mupifApplication.Application):
+                        ExecutionBlock.list_of_models.append(my_class)
 
 
 class TimeLoopBlock(SequentialBlock):
