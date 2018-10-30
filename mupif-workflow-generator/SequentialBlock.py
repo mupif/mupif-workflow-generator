@@ -76,7 +76,6 @@ class SequentialBlock (ExecutionBlock):
         visually lose their connection until an attached Node is moved
         individually.
         """
-        print("move:", self)
         nodes = self.getChildExecutionBlocks(recursive=True)
         nodes.append(self)
         for node in nodes:

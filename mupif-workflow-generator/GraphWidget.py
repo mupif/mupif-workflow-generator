@@ -95,7 +95,7 @@ class GraphWidget (QtWidgets.QWidget):
         menu = QtWidgets.QMenu(self)
         # self.addNodesMenuActions(menu)
         self.addSceneMenuActions(menu)
-        menu.exec_(event.globalPos())
+        menu.exec(event.globalPos())
 
         super(GraphWidget, self).contextMenuEvent(event)
 

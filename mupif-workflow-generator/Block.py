@@ -110,10 +110,14 @@ class WorkflowBlock(SequentialBlock):
         addGenerateCodeAction.triggered.connect(_generateCode)
 
     def contextMenuEvent(self, event):
-        temp = QtWidgets.QWidget()
-        menu = QtWidgets.QMenu(temp)
+        self.showMenu()
+
+    def showMenu(self):
+        print("showMenu call from %s defined in WorkflowBlock" % self.__class__.__name__)
+        widget = self.workflow.widget
+        menu = QtWidgets.QMenu(widget)
         self.addAddBlockMenuActions(menu)
-        menu.exec_(QtGui.QCursor.pos())
+        menu.exec(QtGui.QCursor.pos())
 
     def convertDataLinksToJSON(self):
         return_json_array = []
@@ -198,11 +202,15 @@ class VariableBlock(ExecutionBlock):
         change_value_action.triggered.connect(_changeValue)
 
     def contextMenuEvent(self, event):
-        temp = QtWidgets.QWidget()
-        menu = QtWidgets.QMenu(temp)
+        self.showMenu()
+
+    def showMenu(self):
+        print("showMenu call from %s defined in VariableBlock" % self.__class__.__name__)
+        widget = self.workflow.widget
+        menu = QtWidgets.QMenu(widget)
         self.addMoveMenuActions(menu)
         self.addVariableBlockMenuActions(menu)
-        menu.exec_(QtGui.QCursor.pos())
+        menu.exec(QtGui.QCursor.pos())
 
     def getValue(self):
         return self.value
@@ -319,11 +327,15 @@ class TimeLoopBlock(SequentialBlock):
             sub_sub_sub_menu = sub_sub_menu.addMenu("move")
 
     def contextMenuEvent(self, event):
-        temp = QtWidgets.QWidget()
-        menu = QtWidgets.QMenu(temp)
+        self.showMenu()
+
+    def showMenu(self):
+        print("showMenu call from %s defined in TimeLoopBlock" % self.__class__.__name__)
+        widget = self.workflow.widget
+        menu = QtWidgets.QMenu(widget)
         self.addMoveMenuActions(menu)
         self.addAddBlockMenuActions(menu)
         self.addChildBlocksMenuActions(menu)
-        menu.exec_(QtGui.QCursor.pos())
+        menu.exec(QtGui.QCursor.pos())
 
 

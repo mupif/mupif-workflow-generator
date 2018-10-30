@@ -16,7 +16,7 @@ class Application:
         self.window = Window(self)
 
     def run(self):
-        sys.exit(self.app.exec_())
+        sys.exit(self.app.exec())
 
     def exit(self):
         sys.exit()

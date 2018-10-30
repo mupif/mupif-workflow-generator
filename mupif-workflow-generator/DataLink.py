@@ -221,11 +221,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
         else:
             self.hover = False
         self.updateColor()
-        # if toggle:
-        #     self._oldFillColor = self.fillColor
-        #     self.fillColor = self.fillColor_highlight
-        # else:
-        #     self.fillColor = self._oldFillColor
 
     def paint(self, painter, option, widget):
         """Draw the DataSlot's shape and label."""
@@ -240,13 +235,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
         # Draw a text label next to it. Position depends on the flow.
         text_size = helpers.getTextSize(self.displayName, painter=painter)
 
-        # if self.flow == FLOW_LEFT_TO_RIGHT:
-        #     x = bbox.right() + self.spacing
-        # elif self.flow == FLOW_RIGHT_TO_LEFT:
-        #     x = bbox.left() - self.spacing - text_size.width()
-        # else:
-        #     raise UnknownFlowError(
-        #         "Flow not recognized: {0}".format(self.flow))
         if self.__class__ == InputDataSlot:
             x = bbox.right() + self.spacing
         else:
@@ -254,7 +242,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         y = bbox.bottom()
 
         painter.setPen(QtGui.QPen(self.labelColor))
-        painter.drawText(x, y, self.displayName)
+        painter.drawText(int(x), int(y), self.displayName)
 
     def hoverEnterEvent(self, event):
         """Change the Slot's rectangle color."""
@@ -298,7 +286,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
             node = self.parentItem()
             scene = node.scene()
-            widget = node.workflow.parent
+            widget = node.workflow.widget
             view = widget.view
             x = event.scenePos().x()
             y = event.scenePos().y()
@@ -396,9 +384,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
             if ok_pressed:
                 self.name = new_name
                 self.displayName = self.name
-
-                # self.owner.updateSizeForChildren()
-                # self.owner.resizeForChildDataSlots()
                 self.owner.callUpdatePositionOfWholeWorkflow()
 
         rename_slot_action = sub_menu.addAction("Rename")
@@ -406,8 +391,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
         def _delete():
             self.destroy()
-            # self.owner.updateSizeForChildren()
-            # self.owner.resizeForChildDataSlots()
             self.owner.callUpdatePositionOfWholeWorkflow()
 
             # TODO resize block after deletion
@@ -434,7 +417,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         temp = QtWidgets.QWidget()
         menu = QtWidgets.QMenu(temp)
         self.addSlotMenuActions(menu)
-        menu.exec_(QtGui.QCursor.pos())
+        menu.exec(QtGui.QCursor.pos())
 
     def getParentUUID(self):
         if self.parentItem():
@@ -508,7 +491,6 @@ class DataLink(QtWidgets.QGraphicsPathItem):
     """
     def __init__(self, input=None, output=None, **kwargs):
         super(DataLink, self).__init__(**kwargs)
-        # QtWidgets.QGraphicsPathItem.__init__(**kwargs)
         self.lineColor = QtGui.QColor(0, 0, 250)
         self.removalColor = QtCore.Qt.red
         self.thickness = 2

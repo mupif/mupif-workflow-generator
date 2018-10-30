@@ -51,15 +51,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def __init__(self, parent, workflow, **kwargs):
         QtWidgets.QGraphicsWidget.__init__(self, kwargs.get("parent", None))
-        # self.blockList = [] blocks kept in self.childItems()
-        # self.dataSlots = [] data slots kept in self.childItems()
         self.workflow = workflow
         self.name = kwargs.get("name", "ExecutionBlock")
         self.parent = parent
 
         # This unique id is useful for serialization/reconstruction.
         self.uuid = str(uuid.uuid4())
-        # self.header = None
 
         self.x = 0
         self.y = 0
@@ -67,18 +64,14 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.h = 10
 
         self.spacing = 10
-        # self.margin = self.spacing
         self.roundness = 0
         self.fillColor = QtGui.QColor(220, 220, 220)
 
-        # self.addHeader(Header.Header(node=self, text=self.__class__.__name__))
-        self.header = Header.Header(node=self, text=self.__class__.__name__)
-        self.header.setPos(self.pos())
+        self.header = Header.Header(self, self.__class__.__name__)
         self.header.setParentItem(self)
 
         # General configuration.
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
-        # self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.setCursor(QtCore.Qt.SizeAllCursor)
         self.setAcceptHoverEvents(True)
         self.setAcceptTouchEvents(True)
@@ -86,7 +79,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         self.children_visible = True
 
-        self.button_menu = Button(self, "Menu")
+        self.button_menu = Button(self, "...")
+        self.button_menu.setParentItem(self)
 
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
@@ -138,11 +132,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             if slot.name == name:
                 return slot
         return None
-
-    # def getParentUUID(self):
-    #     if self.parent:
-    #         return self.parent.uuid
-    #     return None
 
     def getDataSlot(self, name=None, uuid=None, parent_uuid=None, recursive_search=False):
         if name or uuid or parent_uuid:
@@ -251,16 +240,16 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         slot_widths.append(0)
         max_slot_width = max(slot_widths)
 
-        self.header.setY(0)
         self.header.setX(0)
+        self.header.setY(0)
 
         header_width = (2*self.spacing + helpers.getTextSize(self.header.text).width())
+
+        header_width += (2*self.spacing + helpers.getTextSize(self.button_menu.text).width())
+
         width_child_max = max(header_width, max_slot_width)
         height_children = self.header.h
 
-        self.button_menu.setY(height_children)
-        self.button_menu.setX(0)
-        # self.button_menu.w
         height_children += self.button_menu.h+self.spacing
 
         # update data slots
@@ -273,19 +262,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         # update blocks
         for elem in self.getChildExecutionBlocks():
-            # elem.updateChildrenPosition_temp()
             elem.setY(height_children)
             width_child_max = max(width_child_max, elem.w)
             print("%s - w=%d" % (elem.name, elem.w))
 
             height_children += elem.h + self.spacing
             elem.setX(self.spacing)
-
-        # TODO check why it causes wider workflow block than necessary
-        # rect = self.childrenBoundingRect()
-        # if rect.width() > width_child_max:
-        #     # if not isinstance(self, ExecutionBlock):
-        #     width_child_max = rect.width()
 
         self.h = height_children
         self.w = width_child_max + self.spacing*2
@@ -319,14 +301,9 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         painter.setBrush(QtGui.QBrush(self.fillColor))
         # painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
         painter.setPen(QtGui.QPen(QtGui.QColor(20, 20, 20)))
-
-        # The bounding box is only as high as the header (we do this
-        # to limit the area that is drag-enabled). Accommodate for that.
-        bbox = self.boundingRect()
-        print(self, bbox)
         painter.drawRoundedRect(self.x,
                                 self.y,
-                                self.w,  # bbox.width()
+                                self.w,
                                 self.h,
                                 self.roundness,
                                 self.roundness)
@@ -386,10 +363,14 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         move_down.triggered.connect(_move_down)
 
     def contextMenuEvent(self, event):
-        temp = QtWidgets.QWidget()
-        menu = QtWidgets.QMenu(temp)
+        self.showMenu()
+
+    def showMenu(self):
+        print("showMenu call from %s defined in ExecutionBlock" % self.__class__.__name__)
+        widget = self.workflow.widget
+        menu = QtWidgets.QMenu(widget)
         self.addMoveMenuActions(menu)
-        menu.exec_(QtGui.QCursor.pos())
+        menu.exec(QtGui.QCursor.pos())
 
     def getParentUUID(self):
         if self.parentItem():
