@@ -161,12 +161,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def removeDataSlot(self, slot):
         """Remove the Knob reference to this node and resize."""
-        slot.setParentItem(None)
+        # slot.setParentItem(None)
+        slot.destroy()
         self.callUpdatePositionOfWholeWorkflow()
 
     def addExecutionBlock(self, block):
         block.setParentItem(self)
-
         self.callUpdatePositionOfWholeWorkflow()
 
     def getChildExecutionBlocks(self, cls=None, recursive=False):
@@ -293,6 +293,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def callUpdatePositionOfWholeWorkflow(self):
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
+        self.workflow.widget.view.redrawDataLinks()
 
     def paint(self, painter, option, widget):
         """Draw the Node's container rectangle."""
@@ -337,22 +338,50 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         super(ExecutionBlock, self).mouseMoveEvent(event)
 
     def destroy(self):
-        """Remove this Node, its Header, Knobs and connected Edges."""
+        """Remove this Block, its Header, menu Button, DataSlots, child Blocks and connected DataLinks."""
         # TODO fix it
         self.header.destroy()
-        for slot in self.dataSlots():
+        self.button_menu.destroy()
+        for slot in self.getDataSlots():
             slot.destroy()
+        for block in self.getChildExecutionBlocks():
+            block.destroy()
 
         scene = self.scene()
         scene.removeItem(self)
+        self.callUpdatePositionOfWholeWorkflow()
         del self
+
+    def moveChildBlock(self, block, direction):
+        child_blocks = self.getChildExecutionBlocks()
+        block_id = -5
+        if block in child_blocks:
+            block_id = child_blocks.index(block)
+
+        if (direction == "up" and block_id > 0) or (direction == "down" and block_id < len(child_blocks)-1):
+            scene = self.scene()
+            for block in child_blocks:
+                scene.removeItem(block)
+
+            id = 0
+            for block in child_blocks:
+                if direction == "up" and id == block_id-1:
+                    self.addExecutionBlock(child_blocks[block_id])
+
+                if not id == block_id:
+                    self.addExecutionBlock(block)
+
+                if direction == "down" and id == block_id + 1:
+                    self.addExecutionBlock(child_blocks[block_id])
+
+                id += 1
 
     def addMoveMenuActions(self, menu):
         def _move_up():
-            pass
+            self.parent.moveChildBlock(self, 'up')
 
         def _move_down():
-            pass
+            self.parent.moveChildBlock(self, 'down')
 
         move_menu = menu.addMenu("Move")
         move_up = move_menu.addAction("Up")
@@ -362,7 +391,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def addDeleteMenuActions(self, menu):
         def _delete():
-            pass
+            self.destroy()
 
         delete_menu = menu.addAction("Delete")
         delete_menu.triggered.connect(_delete)
