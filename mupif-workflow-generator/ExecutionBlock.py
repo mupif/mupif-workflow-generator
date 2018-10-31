@@ -248,9 +248,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         header_width += (2*self.spacing + helpers.getTextSize(self.button_menu.text).width())
 
         width_child_max = max(header_width, max_slot_width)
-        height_children = self.header.h
-
-        height_children += self.button_menu.h+self.spacing
+        height_children = self.header.h + self.spacing
 
         # update data slots
         for elem in self.getDataSlots():
@@ -362,6 +360,13 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         move_down = move_menu.addAction("Down")
         move_down.triggered.connect(_move_down)
 
+    def addDeleteMenuActions(self, menu):
+        def _delete():
+            pass
+
+        delete_menu = menu.addAction("Delete")
+        delete_menu.triggered.connect(_delete)
+
     def contextMenuEvent(self, event):
         self.showMenu()
 
@@ -370,6 +375,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         widget = self.workflow.widget
         menu = QtWidgets.QMenu(widget)
         self.addMoveMenuActions(menu)
+        self.addDeleteMenuActions(menu)
         menu.exec(QtGui.QCursor.pos())
 
     def getParentUUID(self):

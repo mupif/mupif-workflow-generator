@@ -126,7 +126,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.updateColor()
 
         # Temp store for DataLink currently being created.
-        self.new_data_link = None
+        self.temp_data_link = None
         self.setAcceptHoverEvents(True)
 
     def __repr__(self):
@@ -146,7 +146,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         """The Node that this Slot belongs to is its parent item."""
         return self.parentItem()
 
-    def connectTo(self, slot):
+    def connectTo(self, target):
         """Convenience method to connect this to another DataSlot.
 
         This creates an DataLink and directly connects it, in contrast to the mouse
@@ -154,17 +154,44 @@ class DataSlot(QtWidgets.QGraphicsItem):
         user releases on a valid target Knob.
         """
 
-        if slot is self:
+        if not isinstance(target, DataSlot):
+            print("Ignoring connection to all element types except DataSlot and derived classes.")
             return
 
-        self.checkMaxConnections(slot)
+        if self.reachedMaxConnections() or target.reachedMaxConnections():
+            print("One of the slots can accept no more connections.")
+            return
+
+        if target is self:
+            print("Can't connect DataSlot to itself.")
+            return
+            # raise KnobConnectionError(
+            #     "Can't connect a Knob to itself.")
+
+        if not ((isinstance(self, InputDataSlot) and isinstance(target, OutputDataSlot)) or (isinstance(self, OutputDataSlot) and isinstance(target, InputDataSlot))):
+            print("Only InputDataSlot and OutputDataSlot can be connected.")
+            return
+            # raise KnobConnectionError(
+            #     "Can't connect Knobs of same type.")
+
+        if not self.type == target.type:
+            print("Two slots of different value types cannot be connected.")
+            return
+
+        new_conn = set([self, target])
+        for data_link in self.dataLinks:
+            existing_conn = set([data_link.source, data_link.target])
+            diff = existing_conn.difference(new_conn)
+            if not diff:
+                raise KnobConnectionError(
+                    "Connection already exists.")
 
         new_data_link = DataLink()
         new_data_link.source = self
-        new_data_link.target = slot
+        new_data_link.target = target
 
         self.addDataConnection(new_data_link)
-        slot.addDataConnection(new_data_link)
+        target.addDataConnection(new_data_link)
 
         new_data_link.updatePath()
 
@@ -257,101 +284,50 @@ class DataSlot(QtWidgets.QGraphicsItem):
     def mousePressEvent(self, event):
         """Handle DataLink creation."""
         if event.button() == QtCore.Qt.LeftButton:
-            print("create dataLink")
-
-            self.new_data_link = DataLink()
-            self.new_data_link.source = self
-            self.new_data_link.targetPos = event.scenePos()
-            self.new_data_link.updatePath()
-
-            # Make sure this is removed if the user cancels.
-            self.addDataConnection(self.new_data_link)
-            return
+            if not self.reachedMaxConnections():
+                print("Creating new dataLink.")
+                self.temp_data_link = DataLink()
+                self.temp_data_link.temporary = True
+                self.temp_data_link.source = self
+                self.temp_data_link.targetPos = event.scenePos()
+                self.temp_data_link.updatePath()
+                self.addDataConnection(self.temp_data_link)
 
     def mouseMoveEvent(self, event):
         """Update DataLink position when currently creating one."""
-        if self.new_data_link:
-            self.new_data_link.targetPos = event.scenePos()
-            self.new_data_link.updatePath()
+        if self.temp_data_link:
+            self.temp_data_link.targetPos = event.scenePos()
+            self.temp_data_link.updatePath()
 
     def mouseReleaseEvent(self, event):
-        """Finish DataLink creation (if validations are passed).
-
-        TODO: This currently implements some constraints regarding the Knob
-          connection logic, for which we should probably have a more
-          flexible approach.
-        """
-        print("trying to connect two knobs (block)")
-        if event.button() == QtCore.Qt.LeftButton:
-
-            node = self.parentItem()
-            scene = node.scene()
-            widget = node.workflow.widget
-            view = widget.view
-            x = event.scenePos().x()
-            y = event.scenePos().y()
-            qtr = QtGui.QTransform()
-            self.new_data_link.destroy()
-            target = scene.itemAt(x, y, qtr)
-
-            try:
+        """Try to create DataLink."""
+        if self.temp_data_link:
+            print("trying to connect two knobs (block)")
+            if event.button() == QtCore.Qt.LeftButton:
+                node = self.parentItem()
+                scene = node.scene()
+                x = event.scenePos().x()
+                y = event.scenePos().y()
+                qtr = QtGui.QTransform()
+                self.temp_data_link.destroy()
+                self.temp_data_link = None
+                target = scene.itemAt(x, y, qtr)
                 if target:
-                    if self is target:
-                        raise KnobConnectionError(
-                            "Can't connect a Knob to itself.")
+                    self.connectTo(target)
+                    return
 
-                    if isinstance(target, DataSlot):
-                        if type(self) == type(target):
-                            raise KnobConnectionError(
-                                "Can't connect Knobs of same type.")
+                print("No target found.")
 
-                        if False:
-                            raise KnobConnectionError(
-                                "Can't connect Knobs of different value types.")
-
-                        new_conn = set([self, target])
-                        for data_link in self.dataLinks:
-                            existing_conn = set([data_link.source, data_link.target])
-                            diff = existing_conn.difference(new_conn)
-                            if not diff:
-                                raise KnobConnectionError(
-                                    "Connection already exists.")
-
-                        self.checkMaxConnections(target)
-
-                        self.connectTo(target)
-
-                        return
-
-                raise KnobConnectionError(
-                    "DataLink creation cancelled by user.")
-
-            except KnobConnectionError as err:
-                print(err)
-                # Abort DataLink creation and do some cleanup.
-                self.removeDataConnection(self.new_data_link)
-                self.new_data_link = None
-
-    def checkMaxConnections(self, slot):
-        """Check if both this and the target Knob do accept another connection.
-
-        Raise a KnobConnectionError if not.
-        """
-        no_limits = self.maxConnections < 0 and slot.maxConnections < 0
-        if no_limits:
-            return
-
-        num_source_connections = len(self.dataLinks)  # DataLink already added.
-        num_target_connections = len(slot.dataLinks) + 1
-
-        print(num_source_connections, num_target_connections)
-
-        source_max_reached = num_source_connections > self.maxConnections
-        target_max_reached = num_target_connections > slot.maxConnections
-
-        if source_max_reached or target_max_reached:
-            raise KnobConnectionError(
-                "Maximum number of connections reached.")
+    def reachedMaxConnections(self):
+        if self.maxConnections < 0:
+            return False
+        number_of_non_temporary_data_links = 0
+        for link in self.dataLinks:
+            if not link.temporary:
+                number_of_non_temporary_data_links += 1
+        if number_of_non_temporary_data_links < self.maxConnections:
+            return False
+        return True
 
     def finalizeDataLink(self, data_link):
         """This intentionally is a NoOp on the Knob baseclass.
@@ -509,6 +485,8 @@ class DataLink(QtWidgets.QGraphicsPathItem):
         self.curv4 = 0.8
 
         self.setAcceptHoverEvents(True)
+
+        self.temporary = False
 
     def __str__(self):
         return "Datalink (%s -> %s)" % (self.source, self.target)

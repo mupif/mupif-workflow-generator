@@ -51,15 +51,17 @@ class Button(QtWidgets.QGraphicsItem):
 
     def destroy(self):
         """Remove this object from the scene and delete it."""
-        print("destroy header:", self)
+        print("destroy button:", self)
         scene = self.parent.scene()
         scene.removeItem(self)
         del self
 
     # def hoverEnterEvent(self, e):
+    #     print("button hover enter")
     #     self.fillColor = self.fillColor_hover
     #
     # def hoverLeaveEvent(self, e):
+    #     print("button hover enter")
     #     self.fillColor = self.fillColor_normal
 
     def contextMenuEvent(self, event):

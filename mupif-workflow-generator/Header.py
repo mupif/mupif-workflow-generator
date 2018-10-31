@@ -10,9 +10,9 @@ from helpers import getTextSize
 
 
 class Header(QtWidgets.QGraphicsItem):
-    """A Header is a child of a Node and gives it a title.
+    """A Header is a child of a block and gives it a title.
 
-    Its width resizes automatically to match the Node's width.
+    Its width resizes automatically to match the block's width minus the menu button's width.
     """
     def __init__(self, parent, text, **kwargs):
         QtWidgets.QGraphicsItem.__init__(self, **kwargs)
@@ -38,7 +38,8 @@ class Header(QtWidgets.QGraphicsItem):
         text_size = getTextSize(self.text, painter=painter)
         bbox = self.boundingRect()
 
-        painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+        # painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+        painter.setPen(QtGui.QPen(self.fillColor))
         painter.setBrush(QtGui.QBrush(self.fillColor))
         painter.drawRoundedRect(bbox,
                                 self.parent.roundness,

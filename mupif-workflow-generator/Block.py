@@ -209,6 +209,7 @@ class VariableBlock(ExecutionBlock):
         widget = self.workflow.widget
         menu = QtWidgets.QMenu(widget)
         self.addMoveMenuActions(menu)
+        self.addDeleteMenuActions(menu)
         self.addVariableBlockMenuActions(menu)
         menu.exec(QtGui.QCursor.pos())
 
@@ -334,6 +335,7 @@ class TimeLoopBlock(SequentialBlock):
         widget = self.workflow.widget
         menu = QtWidgets.QMenu(widget)
         self.addMoveMenuActions(menu)
+        self.addDeleteMenuActions(menu)
         self.addAddBlockMenuActions(menu)
         self.addChildBlocksMenuActions(menu)
         menu.exec(QtGui.QCursor.pos())
