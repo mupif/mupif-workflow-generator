@@ -1,7 +1,7 @@
 from mupif import Application as mupifApplication
 
 
-class FireDynamicSimulator(mupifApplication.Application):
+class FireDynamicsSimulator(mupifApplication.Application):
     def __init__(self):
         mupifApplication.Application.__init__(self)
 

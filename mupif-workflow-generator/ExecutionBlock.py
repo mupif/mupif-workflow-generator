@@ -253,16 +253,13 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         # update data slots
         for elem in self.getDataSlots():
             elem.setY(height_children)
-            print("Setting y of %s to %d" % (elem.__class__.__name__, height_children))
             width_child_max = max(width_child_max, elem.w)
-            print("%s - w=%d" % (elem.name, elem.w))
             height_children += elem.h + self.spacing
 
         # update blocks
         for elem in self.getChildExecutionBlocks():
             elem.setY(height_children)
             width_child_max = max(width_child_max, elem.w)
-            print("%s - w=%d" % (elem.name, elem.w))
 
             height_children += elem.h + self.spacing
             elem.setX(self.spacing)

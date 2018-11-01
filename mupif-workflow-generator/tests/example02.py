@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     timeloop = TimeLoopBlock(workflow, workflow)
 
-    model_c_1 = FireDynamicSimulator()
+    model_c_1 = FireDynamicsSimulator()
     model_c_2 = HeatSolver()
     model_c_3 = MechanicalSolver()
 

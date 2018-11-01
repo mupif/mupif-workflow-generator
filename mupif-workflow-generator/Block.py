@@ -131,6 +131,7 @@ class WorkflowBlock(SequentialBlock):
         return return_json_array
 
     def loadFromJSON(self, json_data):
+        print("\n\n\nLoading workflow from JSON\n")
         for e in json_data['elements']:
             if e['classname'] == 'WorkflowBlock':
                 self.uuid = e['uuid']
@@ -153,16 +154,20 @@ class WorkflowBlock(SequentialBlock):
                 new_e.setParentItem(e_parent_e)
                 new_e.setValue(e['value'])
 
-            for model in ExecutionBlock.list_of_models:
-                if e['classname'] == model.__name__:
-
-                    new_block_class = model()
-                    new_e = ModelBlock(self, self.workflow)
-                    new_e.constructFromMetaData(new_block_class.getMetaData())
-                    new_e.uuid = e['uuid']
-                    e_parent_e = self.widget.getNodeById(e['parent_uuid'])
-                    new_e.parent = e_parent_e
-                    new_e.setParentItem(e_parent_e)
+            if e['classname'] == 'ModelBlock':
+                model_found = False
+                for model in ExecutionBlock.list_of_models:
+                    if model.__name__ == e['model_classname']:
+                        model_found = True
+                        new_block_class = model()
+                        new_e = ModelBlock(None, self)
+                        new_e.constructFromMetaData(new_block_class.getMetaData())
+                        new_e.uuid = e['uuid']
+                        e_parent_e = self.widget.getNodeById(e['parent_uuid'])
+                        new_e.parent = e_parent_e
+                        new_e.setParentItem(e_parent_e)
+                if not model_found:
+                    print("MODEL CLASS NOT FOUND IN KNOWN MODELS")
 
             if e['classname'] == 'InputDataSlot' or e['classname'] == 'OutputDataSlot':
                 ds = self.getDataSlot(parent_uuid=e['parent_uuid'], name=e['name'], recursive_search=True)
@@ -240,6 +245,11 @@ class ModelBlock(ExecutionBlock):
 
     def generateCode(self):
         return ["%s.solveStep(tstep)" % self.name]
+
+    def getDictForJSON(self):
+        answer = ExecutionBlock.getDictForJSON(self)
+        answer.update({'model_classname': self.name})
+        return answer
 
     def constructFromMetaData(self, metadata):
         self.name = self.model = metadata['name']
