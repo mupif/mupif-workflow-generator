@@ -352,3 +352,11 @@ class TimeLoopBlock(SequentialBlock):
         menu.exec(QtGui.QCursor.pos())
 
 
+class CustomPythonCodeBlock(ExecutionBlock):
+    def __init__(self, parent, workflow):
+        ExecutionBlock.__init__(self, parent, workflow)
+        self.code_lines = []
+
+    def generateCode(self):
+        return self.code_lines
+
