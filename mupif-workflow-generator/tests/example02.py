@@ -21,11 +21,11 @@ if __name__ == '__main__':
     model_c_3 = MechanicalSolver()
 
     model1 = ModelBlock(timeloop, workflow)
-    model1.constructFromMetaData(model_c_1.getMetaData())
+    model1.constructFromModelMetaData(model_c_1)
     model2 = ModelBlock(timeloop, workflow)
-    model2.constructFromMetaData(model_c_2.getMetaData())
+    model2.constructFromModelMetaData(model_c_2)
     model3 = ModelBlock(timeloop, workflow)
-    model3.constructFromMetaData(model_c_3.getMetaData())
+    model3.constructFromModelMetaData(model_c_3)
 
     timeloop.addExecutionBlock(model1)
     timeloop.addExecutionBlock(model2)

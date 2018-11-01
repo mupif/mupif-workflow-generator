@@ -161,7 +161,7 @@ class WorkflowBlock(SequentialBlock):
                         model_found = True
                         new_block_class = model()
                         new_e = ModelBlock(None, self)
-                        new_e.constructFromMetaData(new_block_class.getMetaData())
+                        new_e.constructFromModelMetaData(new_block_class)
                         new_e.uuid = e['uuid']
                         e_parent_e = self.widget.getNodeById(e['parent_uuid'])
                         new_e.parent = e_parent_e
@@ -251,13 +251,14 @@ class ModelBlock(ExecutionBlock):
         answer.update({'model_classname': self.name})
         return answer
 
-    def constructFromMetaData(self, metadata):
-        self.name = self.model = metadata['name']
-        for slot in metadata['inputs']:
-            self.addDataSlot(InputDataSlot(self, slot['name'], slot['type'], slot['optional']))
-        for slot in metadata['outputs']:
-            self.addDataSlot(OutputDataSlot(self, slot['name'], slot['type'], slot['optional']))
-        self.updateHeaderText()
+    def constructFromModelMetaData(self, model):
+        if model.hasMetadata('name') and model.hasMetadata('inputs') and model.hasMetadata('outputs'):
+            self.name = self.model = model.getMetadata('name')
+            for slot in model.getMetadata('inputs'):
+                self.addDataSlot(InputDataSlot(self, slot['name'], slot['type'], slot['optional']))
+            for slot in model.getMetadata('outputs'):
+                self.addDataSlot(OutputDataSlot(self, slot['name'], slot['type'], slot['optional']))
+            self.updateHeaderText()
 
     @staticmethod
     def loadModelsFromGivenFile(full_path):
@@ -317,7 +318,7 @@ class TimeLoopBlock(SequentialBlock):
         def _addModelBlock(idx):
             new_block_class = ExecutionBlock.list_of_models[idx]()
             new_block = ModelBlock(self, self.workflow)
-            new_block.constructFromMetaData(new_block_class.getMetaData())
+            new_block.constructFromModelMetaData(new_block_class)
             self.addExecutionBlock(new_block)
 
         idx = 0
