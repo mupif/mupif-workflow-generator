@@ -363,13 +363,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def addAddStandardBlockMenuAction(self, menu):
 
-        # def _updateChildrenPosition():
-        #     self.updateChildrenSizeAndPositionAndResizeSelf()
-        #     self.updateDataLinksPath()
-        #
-        # new_action = menu.addAction("Update position of child blocks")
-        # new_action.triggered.connect(_updateChildrenPosition)
-
         sub_menu = menu.addMenu("Add standard block")
 
         def _addTimeLoopBlock():
@@ -470,14 +463,16 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             self.addDeleteMenuActions(menu)
         self.addCommonMenuActionsForParentBlocks(menu)
 
+    def addMenuItems(self, menu):
+        self.addCommonMenuActions(menu)
+
     def contextMenuEvent(self, event):
         self.showMenu()
 
     def showMenu(self):
-        print("showMenu call from %s defined in ExecutionBlock" % self.__class__.__name__)
         widget = self.workflow.widget
         menu = QtWidgets.QMenu(widget)
-        self.addCommonMenuActions(menu)
+        self.addMenuItems(menu)
         menu.exec(QtGui.QCursor.pos())
 
     def getParentUUID(self):
@@ -571,16 +566,6 @@ class WorkflowBlock(SequentialBlock):
                     answer.append(datalink)
         return answer
 
-    def contextMenuEvent(self, event):
-        self.showMenu()
-
-    def showMenu(self):
-        print("showMenu call from %s defined in WorkflowBlock" % self.__class__.__name__)
-        widget = self.workflow.widget
-        menu = QtWidgets.QMenu(widget)
-        self.addCommonMenuActions(menu)
-        menu.exec(QtGui.QCursor.pos())
-
     def convertDataLinksToJSON(self):
         return_json_array = []
         for datalink in self.getAllDataLinks():
@@ -668,16 +653,9 @@ class VariableBlock(ExecutionBlock):
         change_value_action = sub_menu.addAction("Change value")
         change_value_action.triggered.connect(_changeValue)
 
-    def contextMenuEvent(self, event):
-        self.showMenu()
-
-    def showMenu(self):
-        print("showMenu call from %s defined in VariableBlock" % self.__class__.__name__)
-        widget = self.workflow.widget
-        menu = QtWidgets.QMenu(widget)
-        self.addCommonMenuActions(menu)
+    def addMenuItems(self, menu):
+        ExecutionBlock.addMenuItems(self, menu)
         self.addVariableBlockMenuActions(menu)
-        menu.exec(QtGui.QCursor.pos())
 
     def getValue(self):
         return self.value
@@ -772,16 +750,6 @@ class TimeLoopBlock(SequentialBlock):
         code.append("")
 
         return code
-
-    def contextMenuEvent(self, event):
-        self.showMenu()
-
-    def showMenu(self):
-        print("showMenu call from %s defined in TimeLoopBlock" % self.__class__.__name__)
-        widget = self.workflow.widget
-        menu = QtWidgets.QMenu(widget)
-        self.addCommonMenuActions(menu)
-        menu.exec(QtGui.QCursor.pos())
 
 
 class CustomPythonCodeBlock(ExecutionBlock):
