@@ -354,8 +354,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.callUpdatePositionOfWholeWorkflow()
         del self
 
-    def addAddStandardBlockMenuAction(self, menu):
-
+    def addMenuItems_AddStandardBlock(self, menu):
         sub_menu = menu.addMenu("Add standard block")
 
         def _addStandardBlock(idx):
@@ -368,7 +367,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             add_model_block_action.triggered.connect(lambda checked, idx=cls_id: _addStandardBlock(idx))
             cls_id += 1
 
-    def addAddModelBlockMenuAction(self, menu):
+    def addMenuItems_AddModelBlock(self, menu):
         sub_menu = menu.addMenu("Add model block")
 
         def _addModelBlock(idx):
@@ -430,8 +429,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         if isinstance(self, VariableBlock):
             is_parent_block = False
         if is_parent_block:
-            self.addAddStandardBlockMenuAction(menu)
-            self.addAddModelBlockMenuAction(menu)
+            self.addMenuItems_AddStandardBlock(menu)
+            self.addMenuItems_AddModelBlock(menu)
 
     def addCommonMenuActions(self, menu):
         if not isinstance(self, WorkflowBlock):
@@ -474,9 +473,20 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         return return_json_array
 
     @staticmethod
-    def getListOfModelNames():
+    def getListOfModelClassnames():
         array = [m.__name__ for m in ExecutionBlock.list_of_models]
         return array
+
+    @staticmethod
+    def getListOfStandardBlockClassnames():
+        array = [m.__name__ for m in ExecutionBlock.list_of_block_classes]
+        return array
+
+    def initializeFromJSONData(self, json_data):
+        self.uuid = json_data['uuid']
+        e_parent_e = self.workflow.widget.getNodeById(json_data['parent_uuid'])
+        self.parent = e_parent_e
+        self.setParentItem(e_parent_e)
 
 
 class SequentialBlock (ExecutionBlock):
@@ -562,50 +572,38 @@ class WorkflowBlock(SequentialBlock):
             if e['classname'] == 'WorkflowBlock':
                 self.uuid = e['uuid']
                 break
+
         for e in json_data['elements']:
             print("importing %s" % e['classname'])
 
-            if e['classname'] == 'TimeLoopBlock':
-                new_e = TimeLoopBlock(None, self)
-                new_e.uuid = e['uuid']
-                e_parent_e = self.widget.getNodeById(e['parent_uuid'])
-                new_e.parent = e_parent_e
-                new_e.setParentItem(e_parent_e)
+            if e['classname'] in ExecutionBlock.getListOfStandardBlockClassnames():
+                cls_id = ExecutionBlock.getListOfStandardBlockClassnames().index(e['classname'])
+                new_e = ExecutionBlock.list_of_block_classes[cls_id](None, self)
+                new_e.initializeFromJSONData(e)
 
-            if e['classname'] == 'VariableBlock':
-                new_e = VariableBlock(None, self)
-                new_e.uuid = e['uuid']
-                e_parent_e = self.widget.getNodeById(e['parent_uuid'])
-                new_e.parent = e_parent_e
-                new_e.setParentItem(e_parent_e)
-                new_e.setValue(e['value'])
+            elif e['classname'] == 'ModelBlock':
+                if e['model_classname'] in ExecutionBlock.getListOfModelClassnames():
+                    cls_id = ExecutionBlock.getListOfModelClassnames().index(e['model_classname'])
+                    new_block_class = ExecutionBlock.list_of_models[cls_id]()
+                    new_e = ModelBlock(None, self)
+                    new_e.constructFromModelMetaData(new_block_class)
+                    new_e.initializeFromJSONData(e)
 
-            if e['classname'] == 'ModelBlock':
-                model_found = False
-                for model in ExecutionBlock.list_of_models:
-                    if model.__name__ == e['model_classname']:
-                        model_found = True
-                        new_block_class = model()
-                        new_e = ModelBlock(None, self)
-                        new_e.constructFromModelMetaData(new_block_class)
-                        new_e.uuid = e['uuid']
-                        e_parent_e = self.widget.getNodeById(e['parent_uuid'])
-                        new_e.parent = e_parent_e
-                        new_e.setParentItem(e_parent_e)
-                if not model_found:
+                else:
                     print("MODEL CLASS NOT FOUND IN KNOWN MODELS")
 
-            if e['classname'] == 'InputDataSlot' or e['classname'] == 'OutputDataSlot':
-                ds = self.getDataSlot(parent_uuid=e['parent_uuid'], name=e['name'], recursive_search=True)
-                if ds:
-                    ds.setUUID(e['uuid'])
+            else:
+                if e['classname'] == 'InputDataSlot' or e['classname'] == 'OutputDataSlot':
+                    ds = self.getDataSlot(parent_uuid=e['parent_uuid'], name=e['name'], recursive_search=True)
+                    if ds:
+                        ds.setUUID(e['uuid'])
 
-            if e['classname'] == 'DataLink':
-                ds1 = self.getDataSlot(uuid=e['ds1_uuid'], recursive_search=True)
-                ds2 = self.getDataSlot(uuid=e['ds2_uuid'], recursive_search=True)
-                if ds1 and ds2:
-                    if (isinstance(ds1, InputDataSlot) and isinstance(ds2, OutputDataSlot)) or (isinstance(ds1, OutputDataSlot) and isinstance(ds2, InputDataSlot)):
-                        ds1.connectTo(ds2)
+                if e['classname'] == 'DataLink':
+                    ds1 = self.getDataSlot(uuid=e['ds1_uuid'], recursive_search=True)
+                    ds2 = self.getDataSlot(uuid=e['ds2_uuid'], recursive_search=True)
+                    if ds1 and ds2:
+                        if (isinstance(ds1, InputDataSlot) and isinstance(ds2, OutputDataSlot)) or (isinstance(ds1, OutputDataSlot) and isinstance(ds2, InputDataSlot)):
+                            ds1.connectTo(ds2)
 
         self.updateChildrenSizeAndPositionAndResizeSelf()
         self.widget.view.redrawDataLinks()
@@ -648,6 +646,10 @@ class VariableBlock(ExecutionBlock):
         answer.update({'value': self.getValue()})
         return answer
 
+    def initializeFromJSONData(self, json_data):
+        ExecutionBlock.initializeFromJSONData(self, json_data)
+        self.setValue(json_data['value'])
+
 
 class ModelBlock(ExecutionBlock):
     def __init__(self, parent, workflow, model=None, model_name=None):
@@ -685,7 +687,7 @@ class ModelBlock(ExecutionBlock):
         for mod in dir(py_mod):
             if not mod[0] == "_":
                 my_class = getattr(py_mod, mod)
-                if my_class.__name__ not in ExecutionBlock.getListOfModelNames() and inspect.isclass(my_class):
+                if my_class.__name__ not in ExecutionBlock.getListOfModelClassnames() and inspect.isclass(my_class):
                     if issubclass(my_class, mupifApplication.Application):
                         ExecutionBlock.list_of_models.append(my_class)
 
