@@ -47,14 +47,6 @@ import json
 """
 
 
-def printCode(code, level=-1):
-    if isinstance(code, str):
-        print("%s%s" % ('\t'*level, code))
-    else:
-        for line in code:
-            printCode(line, level+1)
-
-
 class ExecutionBlock (QtWidgets.QGraphicsWidget):
     """
     Abstract class representing execution block
@@ -366,7 +358,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         sub_menu = menu.addMenu("Add standard block")
 
         def _addTimeLoopBlock():
-            new_time_loop_block = TimeLoopBlock(self, self)
+            new_time_loop_block = TimeLoopBlock(self, self.workflow)
             self.addExecutionBlock(new_time_loop_block)
 
         add_time_loop_block_action = sub_menu.addAction("TimeLoop Block")
@@ -378,19 +370,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         add_variable_block_action = sub_menu.addAction("Variable")
         add_variable_block_action.triggered.connect(_addVariableBlock)
-
-        # def _generateCode():
-        #     code = self.generateCode()
-        #     print()
-        #     print()
-        #     print()
-        #     printCode(code)
-        #     print()
-        #     print()
-        #     print()
-        #
-        # addGenerateCodeAction = menu.addAction("Generate code")
-        # addGenerateCodeAction.triggered.connect(_generateCode)
 
     def addAddModelBlockMenuAction(self, menu):
         sub_menu = menu.addMenu("Add model block")
@@ -735,7 +714,7 @@ class TimeLoopBlock(SequentialBlock):
 
     def generateCode(self):
         code = ["time=%f" % self.getStartTime(),
-                "while (time<=%f):" % self.getTargetTime()]
+                "while time<=%f:" % self.getTargetTime()]
         while_code = []
         dt_code = "deltaT = min("
         for i in self.getChildExecutionBlocks():

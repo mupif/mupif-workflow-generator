@@ -84,6 +84,50 @@ class Window(QtWidgets.QMainWindow):
                 Block.ModelBlock.loadModelsFromGivenFile(file_path)
                 self.updateMenuListOfAPI()
 
+        def formatCodeToText(code, level=-1):
+            text_code = ""
+            if isinstance(code, str):
+                text_code += "%s%s\n" % ('\t' * level, code)
+            else:
+                for line in code:
+                    text_code += formatCodeToText(line, level + 1)
+            return text_code
+
+        def printCode(code, level=-1):
+            print(formatCodeToText(code, level))
+
+        def _generate_class_code():
+            code = "TODO"
+            # temporary printing into console
+            print("\nClass code:\n\n%s" % formatCodeToText(code))
+            # saving into file
+            file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                self,
+                "Save Python Class Code to File",
+                os.path.join(QtCore.QDir.currentPath(), "class_code.py"),
+                "Python File (*.py)"
+            )
+            if file_path:
+                f = open(file_path, "w")
+                f.write(formatCodeToText(code))
+                f.close()
+
+        def _generate_execution_code():
+            code = self.widget.workflow.generateCode()
+            # temporary printing into console
+            print("\nExecution code:\n\n%s" % formatCodeToText(code))
+            # saving into file
+            file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                self,
+                "Save Python Execution Code to File",
+                os.path.join(QtCore.QDir.currentPath(), "execution_code.py"),
+                "Python File (*.py)"
+            )
+            if file_path:
+                f = open(file_path, "w")
+                f.write(formatCodeToText(code))
+                f.close()
+
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
         #
@@ -92,8 +136,10 @@ class Window(QtWidgets.QMainWindow):
         workflow_action_new_blank_workflow.setShortcut("Ctrl+N")
 
         workflow_action_generate_class_code = QtWidgets.QAction('Generate class code', self)
+        workflow_action_generate_class_code.triggered.connect(_generate_class_code)
 
         workflow_action_generate_execution_code = QtWidgets.QAction('Generate execution code', self)
+        workflow_action_generate_execution_code.triggered.connect(_generate_execution_code)
 
         workflow_action_save_to_file = QtWidgets.QAction('Save to file', self)
         workflow_action_save_to_file.triggered.connect(_save_to_json_file)
