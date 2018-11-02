@@ -52,6 +52,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     Abstract class representing execution block
     """
     list_of_models = []
+    list_of_block_classes = []
 
     def __init__(self, parent, workflow, **kwargs):
         QtWidgets.QGraphicsWidget.__init__(self, kwargs.get("parent", None))
@@ -357,19 +358,15 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         sub_menu = menu.addMenu("Add standard block")
 
-        def _addTimeLoopBlock():
-            new_time_loop_block = TimeLoopBlock(self, self.workflow)
-            self.addExecutionBlock(new_time_loop_block)
-
-        add_time_loop_block_action = sub_menu.addAction("TimeLoop Block")
-        add_time_loop_block_action.triggered.connect(_addTimeLoopBlock)
-
-        def _addVariableBlock():
-            new_block = VariableBlock(self, self.workflow)
+        def _addStandardBlock(idx):
+            new_block = ExecutionBlock.list_of_block_classes[idx](self, self.workflow)
             self.addExecutionBlock(new_block)
 
-        add_variable_block_action = sub_menu.addAction("Variable")
-        add_variable_block_action.triggered.connect(_addVariableBlock)
+        cls_id = 0
+        for block_class in ExecutionBlock.list_of_block_classes:
+            add_model_block_action = sub_menu.addAction(block_class.__name__)
+            add_model_block_action.triggered.connect(lambda checked, idx=cls_id: _addStandardBlock(idx))
+            cls_id += 1
 
     def addAddModelBlockMenuAction(self, menu):
         sub_menu = menu.addMenu("Add model block")
@@ -380,11 +377,11 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             new_block.constructFromModelMetaData(new_block_class)
             self.addExecutionBlock(new_block)
 
-        idx = 0
+        cls_id = 0
         for model in ExecutionBlock.list_of_models:
             add_model_block_action = sub_menu.addAction(model.__name__)
-            add_model_block_action.triggered.connect(lambda checked, idx=idx: _addModelBlock(idx))
-            idx += 1
+            add_model_block_action.triggered.connect(lambda checked, idx=cls_id: _addModelBlock(idx))
+            cls_id += 1
 
     def moveChildBlock(self, block, direction):
         child_blocks = self.getChildExecutionBlocks()
@@ -533,6 +530,9 @@ class WorkflowBlock(SequentialBlock):
         self.name = "WorkflowBlock"
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.widget = parent
+
+        ExecutionBlock.list_of_block_classes = []
+        ExecutionBlock.list_of_block_classes.extend([TimeLoopBlock, VariableBlock, CustomPythonCodeBlock, IfElseBlock])
 
     def getScene(self):
         return self.loc_scene
@@ -738,4 +738,9 @@ class CustomPythonCodeBlock(ExecutionBlock):
 
     def generateCode(self):
         return self.code_lines
+
+
+class IfElseBlock(ExecutionBlock):
+    def __init__(self, parent, workflow):
+        ExecutionBlock.__init__(self, parent, workflow)
 
