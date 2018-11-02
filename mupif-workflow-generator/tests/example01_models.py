@@ -28,23 +28,3 @@ class MechanicalSolver(mupifApplication.Application):
                     'outputs': [{'name': 'DisplacementField', 'type': 'field', 'optional': True,
                                  'description': 'Field of resulting displacements'}]})
 
-
-#     self.metadata = {}
-#
-# def getMetadata(self, key):
-#     """
-#     Returns metadata associated to given key
-#     :param key: unique metadataID
-#     :return: metadata associated to key, throws TypeError if key does not exist
-#     :raises: TypeError
-#     """
-#     return self.metadata[key];
-#
-# def hasMetadata(self, key):
-#     """
-#     Returns true if key defined
-#     :param key: unique metadataID
-#     :return: true if key defined, false otherwise
-#     :rtype: bool
-#     """
-#     return self.metadata.has_key(key)
