@@ -218,7 +218,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
             scene.addItem(data_link)
 
     def removeDataConnection (self, data_link):
-        """Remove th given DataLink from the internal tracking list.
+        """Remove the given DataLink from the internal tracking list.
 
         If it is unknown, do nothing. Also remove it from the QGraphicsScene.
         """
@@ -231,17 +231,12 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.uuid = uuid
 
     def boundingRect(self):
-        """Return the bounding box of this Knob."""
-        rect = QtCore.QRectF(self.x,
-                             self.y,
-                             self.w,
-                             self.h)
+        """Return the bounding box of this element."""
+        rect = QtCore.QRectF(self.x, self.y, self.w, self.h)
         return rect
 
     def highlight(self, toggle):
         """Toggle the highlight color on/off.
-
-        Store the old color in a new attribute, so it can be restored.
         """
         if toggle:
             self.hover = True
@@ -262,7 +257,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         # Draw a text label next to it. Position depends on the flow.
         text_size = helpers.getTextSize(self.displayName, painter=painter)
 
-        if self.__class__ == InputDataSlot:
+        if isinstance(self, InputDataSlot):
             x = bbox.right() + self.spacing
         else:
             x = bbox.left() - self.spacing - text_size.width()
@@ -270,6 +265,17 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
         painter.setPen(QtGui.QPen(self.labelColor))
         painter.drawText(int(x), int(y), self.displayName)
+
+        # draw empty rect on the other side of the text in case of external DataSlot
+        if isinstance(self, ExternalInputDataSlot) or isinstance(self, ExternalOutputDataSlot):
+            if isinstance(self, InputDataSlot):
+                empty_box_x = bbox.right() + self.spacing * 2 + text_size.width()
+            else:
+                empty_box_x = bbox.left() - self.spacing * 2 - text_size.width() - self.w
+            empty_box = QtCore.QRectF(empty_box_x, self.y, self.w, self.h)
+            painter.setPen(QtGui.QPen(self.labelColor))
+            painter.setBrush(QtGui.QBrush(QtCore.Qt.NoBrush))
+            painter.drawRect(empty_box)
 
     def hoverEnterEvent(self, event):
         """Change the Slot's rectangle color."""
@@ -406,38 +412,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
         answer.update({'name': self.name})
         return answer
 
-# def ensureEdgeDirection(data_link):
-#     """Make sure the DataLink direction is as described below.
-#
-#        .source --> .target
-#     OutputDataSlot --> InputDataSlot
-#
-#     Which basically translates to:
-#
-#     'The Node with the OutputKnob is the child of the Node with the InputKnob.'
-#
-#     This may seem the exact opposite way as expected, but makes sense
-#     when seen as a hierarchy: A Node which output depends on some other
-#     Node's input can be seen as a *child* of the other Node. We need
-#     that information to build a directed graph.
-#
-#     We assume here that there always is an InputKnob and an OutputKnob
-#     in the given DataLink, just their order may be wrong. Since the
-#     serialization relies on that order, it is enforced here.
-#     """
-#     print("ensure DataLink direction")
-#     if isinstance(data_link.target, OutputDataSlot):
-#         assert isinstance(data_link.source, InputDataSlot)
-#         current_target = data_link.source
-#         data_link.source = data_link.target
-#         data_link.target = current_target
-#     else:
-#         assert isinstance(data_link.source, OutputDataSlot)
-#         assert isinstance(data_link.target, InputDataSlot)
-#
-#     print("src:", data_link.source.__class__.__name__,
-#           "trg:", data_link.target.__class__.__name__)
-
 
 class InputDataSlot (DataSlot):
     """
@@ -459,6 +433,16 @@ class OutputDataSlot (DataSlot):
 
     def __repr__(self):
         return "OutputDataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
+
+
+class ExternalInputDataSlot(InputDataSlot):
+    def __init__(self, owner, name, type, optional=False):
+        InputDataSlot.__init__(self, owner, name, type, optional)
+
+
+class ExternalOutputDataSlot(OutputDataSlot):
+    def __init__(self, owner, name, type, optional=False):
+        OutputDataSlot.__init__(self, owner, name, type, optional)
 
 
 class DataLink(QtWidgets.QGraphicsPathItem):

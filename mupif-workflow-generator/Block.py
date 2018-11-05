@@ -188,8 +188,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         return blocks
 
     def getBlocks(self, cls = None):
-        """Return a list of data slots.
-            If the optional `cls` is specified, return only Slots of that class.
+        """Return a list of child blocks.
+            If the optional `cls` is specified, return only blocks of that class.
             This is useful e.g. to get all Input or Output Slots.
         """
         return_array = []
@@ -607,6 +607,25 @@ class WorkflowBlock(SequentialBlock):
 
         self.updateChildrenSizeAndPositionAndResizeSelf()
         self.widget.view.redrawDataLinks()
+
+    def addWorkflowDataSlotActions(self, menu):
+        def _add_input_workflow_dataslot():
+            new_slot = ExternalOutputDataSlot(self, "ExternalInputDataSlot", None)
+            self.addDataSlot(new_slot)
+
+        def _add_output_workflow_dataslot():
+            new_slot = ExternalInputDataSlot(self, "ExternalOutputDataSlot", None)
+            self.addDataSlot(new_slot)
+
+        temp_menu = menu.addMenu("Add external DataSlot")
+        add_input = temp_menu.addAction("Input")
+        add_input.triggered.connect(_add_input_workflow_dataslot)
+        add_output = temp_menu.addAction("Output")
+        add_output.triggered.connect(_add_output_workflow_dataslot)
+
+    def addMenuItems(self, menu):
+        ExecutionBlock.addMenuItems(self, menu)
+        self.addWorkflowDataSlotActions(menu)
 
 
 class VariableBlock(ExecutionBlock):
