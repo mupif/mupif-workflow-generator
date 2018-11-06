@@ -277,6 +277,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
                 elem.setX(self.spacing)
             else:
                 elem.setX(self.w-elem.w-self.spacing)
+            elem.setTotalWidth(self.w-self.spacing*2)
 
     def updateChildrenSizeAndPositionAndResizeSelf(self, color_id=0):
         if color_id:
@@ -576,7 +577,17 @@ class WorkflowBlock(SequentialBlock):
         for e in json_data['elements']:
             print("importing %s" % e['classname'])
 
-            if e['classname'] in ExecutionBlock.getListOfStandardBlockClassnames():
+            if e['classname'] == 'ExternalInputDataSlot':
+                new_ds = ExternalInputDataSlot(self, e['name'], e['type'])
+                new_ds.uuid = e['uuid']
+                self.addDataSlot(new_ds)
+
+            elif e['classname'] == 'ExternalOutputDataSlot':
+                new_ds = ExternalOutputDataSlot(self, e['name'], e['type'])
+                new_ds.uuid = e['uuid']
+                self.addDataSlot(new_ds)
+
+            elif e['classname'] in ExecutionBlock.getListOfStandardBlockClassnames():
                 cls_id = ExecutionBlock.getListOfStandardBlockClassnames().index(e['classname'])
                 new_e = ExecutionBlock.list_of_block_classes[cls_id](None, self)
                 new_e.initializeFromJSONData(e)
@@ -610,11 +621,11 @@ class WorkflowBlock(SequentialBlock):
 
     def addWorkflowDataSlotActions(self, menu):
         def _add_input_workflow_dataslot():
-            new_slot = ExternalOutputDataSlot(self, "ExternalInputDataSlot", None)
+            new_slot = ExternalOutputDataSlot(self, "ExternalInputDataSlot", "auto")
             self.addDataSlot(new_slot)
 
         def _add_output_workflow_dataslot():
-            new_slot = ExternalInputDataSlot(self, "ExternalOutputDataSlot", None)
+            new_slot = ExternalInputDataSlot(self, "ExternalOutputDataSlot", "auto")
             self.addDataSlot(new_slot)
 
         temp_menu = menu.addMenu("Add external DataSlot")
@@ -632,7 +643,7 @@ class VariableBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
         self.value = 0.
-        self.addDataSlot(OutputDataSlot(self, "value", float, False))
+        self.addDataSlot(OutputDataSlot(self, "value", "float", False))
         self.getDataSlots()[0].displayName = "%le" % self.value
         self.variable_name = ""
 
@@ -714,8 +725,8 @@ class ModelBlock(ExecutionBlock):
 class TimeLoopBlock(SequentialBlock):
     def __init__(self, parent, workflow):
         SequentialBlock.__init__(self, parent, workflow)
-        self.addDataSlot(InputDataSlot(self, "start_time", float, False))
-        self.addDataSlot(InputDataSlot(self, "target_time", float, False))
+        self.addDataSlot(InputDataSlot(self, "start_time", 'float', False))
+        self.addDataSlot(InputDataSlot(self, "target_time", 'float', False))
 
     def getStartTime(self):
         if len(self.getDataSlotWithName("start_time").dataLinks):

@@ -98,7 +98,10 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.type = type
         self.optional = optional
         if isinstance(self, OutputDataSlot):
-            self.optional = True
+            self.optional = False
+        if isinstance(self, ExternalInputDataSlot) or isinstance(self, ExternalOutputDataSlot):
+            self.optional = False
+
         self.uuid = str(uuid.uuid4())
 
         self.dataLinks = []  # data
@@ -110,11 +113,12 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.w = 14
         self.h = 14
 
+        self.w_tot = self.w
         self.spacing = 5
         self.flow = FLOW_LEFT_TO_RIGHT
 
         self.maxConnections = -1  # A negative value means 'unlimited'.
-        self.displayName = self.name
+        self.displayName = "%s (%s)" % (self.name, self.type)
 
         self.labelColor = QtGui.QColor(10, 10, 10)
 
@@ -131,6 +135,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def __repr__(self):
         return "DataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
+
+    def setTotalWidth(self, val):
+        self.w_tot = val
 
     def updateColor(self):
         if self.hover:
@@ -168,13 +175,14 @@ class DataSlot(QtWidgets.QGraphicsItem):
             # raise KnobConnectionError(
             #     "Can't connect a Knob to itself.")
 
-        if not ((isinstance(self, InputDataSlot) and isinstance(target, OutputDataSlot)) or (isinstance(self, OutputDataSlot) and isinstance(target, InputDataSlot))):
+        if not ((isinstance(self, InputDataSlot) and isinstance(target, OutputDataSlot)) or (
+                    isinstance(self, OutputDataSlot) and isinstance(target, InputDataSlot))):
             print("Only InputDataSlot and OutputDataSlot can be connected.")
             return
             # raise KnobConnectionError(
             #     "Can't connect Knobs of same type.")
 
-        if not self.type == target.type:
+        if not self.type == target.type and not self.type == "auto" and not target.type == "auto":
             print("Two slots of different value types cannot be connected.")
             return
 
@@ -269,9 +277,10 @@ class DataSlot(QtWidgets.QGraphicsItem):
         # draw empty rect on the other side of the text in case of external DataSlot
         if isinstance(self, ExternalInputDataSlot) or isinstance(self, ExternalOutputDataSlot):
             if isinstance(self, InputDataSlot):
-                empty_box_x = bbox.right() + self.spacing * 2 + text_size.width()
+                empty_box_x = self.x + self.w_tot - self.w
             else:
-                empty_box_x = bbox.left() - self.spacing * 2 - text_size.width() - self.w
+                empty_box_x = self.x - self.w_tot + self.w
+
             empty_box = QtCore.QRectF(empty_box_x, self.y, self.w, self.h)
             painter.setPen(QtGui.QPen(self.labelColor))
             painter.setBrush(QtGui.QBrush(QtCore.Qt.NoBrush))
@@ -409,7 +418,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def getDictForJSON(self):
         answer = {'classname': self.__class__.__name__, 'uuid': self.uuid, 'parent_uuid': self.getParentUUID()}
-        answer.update({'name': self.name})
+        answer.update({'name': self.name, 'type': "%s" % self.type})
         return answer
 
 
