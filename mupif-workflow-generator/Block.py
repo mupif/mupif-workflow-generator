@@ -155,7 +155,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         either being an Input- or Output slot.
         """
         slot_names = [k.name for k in self.getDataSlots()]
-        print("adding slot, existing Slots:", self.getDataSlots(), slot_names)
+        # print("adding slot, existing Slots:", self.getDataSlots(), slot_names)
         if slot.name in slot_names:
             raise DuplicateKnobNameError(
                 "Slot names must be unique, but {0} already exists."
@@ -429,6 +429,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             is_parent_block = False
         if isinstance(self, VariableBlock):
             is_parent_block = False
+        if isinstance(self, CustomPythonCodeBlock):
+            is_parent_block = False
         if is_parent_block:
             self.addMenuItems_AddStandardBlock(menu)
             self.addMenuItems_AddModelBlock(menu)
@@ -578,7 +580,7 @@ class WorkflowBlock(SequentialBlock):
             print("importing %s" % e['classname'])
 
             if e['classname'] == 'ExternalInputDataSlot':
-                new_ds = ExternalInputDataSlot(self, e['name'], e['type'])
+                new_ds = ExternalInputDataSlot(self, e['name'], DataSlotType.getTypeFromName(e['type']))
                 new_ds.uuid = e['uuid']
                 self.addDataSlot(new_ds)
 
@@ -619,7 +621,7 @@ class WorkflowBlock(SequentialBlock):
         self.updateChildrenSizeAndPositionAndResizeSelf()
         self.widget.view.redrawDataLinks()
 
-    def addExternalDataSlotActions(self, menu):
+    def addExternalDataSlotItems(self, menu):
         def _add_external_input_dataslot():
             new_slot = ExternalOutputDataSlot(self, "ExternalInputDataSlot", "auto")
             self.addDataSlot(new_slot)
@@ -636,7 +638,7 @@ class WorkflowBlock(SequentialBlock):
 
     def addMenuItems(self, menu):
         ExecutionBlock.addMenuItems(self, menu)
-        self.addExternalDataSlotActions(menu)
+        self.addExternalDataSlotItems(menu)
 
     def checkConsistency(self, execution=False):
         data_slots = self.getAllDataSlots(True)
@@ -654,11 +656,11 @@ class VariableBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
         self.value = 0.
-        self.addDataSlot(OutputDataSlot(self, "value", "float", False))
+        self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Scalar, False))
         self.getDataSlots()[0].displayName = "%le" % self.value
         self.variable_name = ""
 
-    def addVariableBlockMenuActions(self, menu):
+    def addVariableBlockMenuItems(self, menu):
         sub_menu = menu.addMenu("Modify")
 
         def _changeValue():
@@ -673,7 +675,7 @@ class VariableBlock(ExecutionBlock):
 
     def addMenuItems(self, menu):
         ExecutionBlock.addMenuItems(self, menu)
-        self.addVariableBlockMenuActions(menu)
+        self.addVariableBlockMenuItems(menu)
 
     def getValue(self):
         return self.value
@@ -716,9 +718,9 @@ class ModelBlock(ExecutionBlock):
         if model.hasMetadata('name') and model.hasMetadata('inputs') and model.hasMetadata('outputs'):
             self.name = self.model = model.getMetadata('name')
             for slot in model.getMetadata('inputs'):
-                self.addDataSlot(InputDataSlot(self, slot['name'], slot['type'], slot['optional']))
+                self.addDataSlot(InputDataSlot(self, slot['name'], DataSlotType.getTypeFromName(slot['type']), slot['optional']))
             for slot in model.getMetadata('outputs'):
-                self.addDataSlot(OutputDataSlot(self, slot['name'], slot['type'], slot['optional']))
+                self.addDataSlot(OutputDataSlot(self, slot['name'], DataSlotType.getTypeFromName(slot['type']), slot['optional']))
             self.updateHeaderText()
 
     @staticmethod
@@ -736,8 +738,8 @@ class ModelBlock(ExecutionBlock):
 class TimeLoopBlock(SequentialBlock):
     def __init__(self, parent, workflow):
         SequentialBlock.__init__(self, parent, workflow)
-        self.addDataSlot(InputDataSlot(self, "start_time", 'float', False))
-        self.addDataSlot(InputDataSlot(self, "target_time", 'float', False))
+        self.addDataSlot(InputDataSlot(self, "start_time", DataSlotType.Scalar, False))
+        self.addDataSlot(InputDataSlot(self, "target_time", DataSlotType.Scalar, False))
 
     def getStartTime(self):
         if len(self.getDataSlotWithName("start_time").dataLinks):
@@ -774,13 +776,76 @@ class TimeLoopBlock(SequentialBlock):
         return code
 
 
+def linesToText(lines):
+    text = ""
+    for line in lines:
+        text = "%s\n%s" % (text, line)
+        return text
+
+
 class CustomPythonCodeBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
-        self.code_lines = []
+        self.code_lines = ["# CustomPythonBlock code"]
 
     def generateCode(self):
         return self.code_lines
+
+    def setCodeLines(self, lines):
+        self.code_lines = lines
+
+    def paint(self, painter, option, widget):
+        ExecutionBlock.paint(self, painter, option, widget)
+
+    def addEditCodeItems(self, menu):
+        sub_menu = menu.addMenu("Code")
+
+        def _showCode():
+            self.code_editor = QtWidgets.QTextEdit()
+            for line in self.code_lines:
+                self.code_editor.append(line)
+            self.code_editor.resize(300, 300)
+            self.code_editor.setReadOnly(True)
+            self.code_editor.show()
+
+        show_code = sub_menu.addAction("Show")
+        show_code.triggered.connect(_showCode)
+
+        def _editCode():
+            self.code_editor = QtWidgets.QTextEdit()
+            for line in self.code_lines:
+                self.code_editor.append(line)
+            self.code_editor.resize(300, 300)
+            self.code_editor.show()
+
+            def _saveCode():
+                self.code_lines = self.code_editor.toPlainText().split("\n")
+                print("Code has been saved.")
+
+            self.code_editor.textChanged.connect(_saveCode)
+
+        edit_code = sub_menu.addAction("Edit")
+        edit_code.triggered.connect(_editCode)
+
+        def _loadCode():
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self.workflow.widget.window,
+                "Open Python code File",
+                os.path.join(QtCore.QDir.currentPath(), "code.py"),
+                "Python File (*.py)"
+            )
+            if file_path:
+                f = open(file_path, "r")
+                code = f.read()
+                f.close()
+                self.code_lines = code.split("\n")
+
+        load_code = sub_menu.addAction("Load from file")
+        load_code.triggered.connect(_loadCode)
+
+    def addMenuItems(self, menu):
+        ExecutionBlock.addMenuItems(self, menu)
+        self.addEditCodeItems(menu)
 
 
 class IfElseBlock(ExecutionBlock):

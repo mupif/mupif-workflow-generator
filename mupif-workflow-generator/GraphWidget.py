@@ -20,7 +20,7 @@ class GraphWidget (QtWidgets.QWidget):
 
         # self.scene = Scene.Scene()
         self.view = GraphView.GraphView()
-
+        self.window = parent
         self.scene = QtWidgets.QGraphicsScene()
         self.view.setScene(self.scene)
         self.workflow = Block.WorkflowBlock(self, self.scene)

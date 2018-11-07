@@ -30,6 +30,7 @@ import helpers
 from exceptions import DuplicateKnobNameError, KnobConnectionError
 import json
 import os
+from enum import Enum
 
 windows = os.name == "nt"
 DELETE_MODIFIER_KEY = QtCore.Qt.AltModifier if windows else QtCore.Qt.ControlModifier
@@ -50,10 +51,25 @@ DELETE_MODIFIER_KEY = QtCore.Qt.AltModifier if windows else QtCore.Qt.ControlMod
 
 """
 
-#
-# Data model
-#
-#
+
+class DataSlotType(Enum):
+    Auto = 0
+    Scalar = 1
+    Field = 2
+
+    @staticmethod
+    def getTypeFromName(val):
+        for t in DataSlotType:
+            if t.name == val:
+                return t
+        return None
+
+    @staticmethod
+    def getNameFromType(val):
+        for t in DataSlotType:
+            if t == val:
+                return t.name
+        return None
 
 
 class DataProvider:
@@ -121,7 +137,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         if isinstance(self, InputDataSlot):
             self.maxConnections = 1
 
-        self.displayName = "%s (%s)" % (self.name, self.type)
+        self.displayName = "%s (%s)" % (self.name, DataSlotType.getNameFromType(self.type))
 
         self.labelColor = QtGui.QColor(10, 10, 10)
 
@@ -421,7 +437,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def getDictForJSON(self):
         answer = {'classname': self.__class__.__name__, 'uuid': self.uuid, 'parent_uuid': self.getParentUUID()}
-        answer.update({'name': self.name, 'type': "%s" % self.type})
+        answer.update({'name': self.name, 'type': "%s" % DataSlotType.getNameFromType(self.type)})
         return answer
 
 
@@ -480,7 +496,7 @@ class DataLink(QtWidgets.QGraphicsPathItem):
         self.curv2 = 0.2
         self.curv4 = 0.8
 
-        self.setAcceptHoverEvents(True)
+        self.setAcceptHoverEvents(False)
 
         self.temporary = False
 

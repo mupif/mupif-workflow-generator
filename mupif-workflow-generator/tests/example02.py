@@ -3,6 +3,8 @@ from Application import *
 
 if __name__ == '__main__':
 
+    ModelBlock.loadModelsFromGivenFile("example01_models.py")
+
     application = Application()
     workflow = application.getWorkflowBlock()
 

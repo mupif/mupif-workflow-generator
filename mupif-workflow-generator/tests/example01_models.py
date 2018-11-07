@@ -5,7 +5,7 @@ class FireDynamicsSimulator(mupifApplication.Application):
     def __init__(self):
         mupifApplication.Application.__init__(self)
         self.metadata.update({'name': 'FireDynamicsSimulator', 'type': 'CFD', 'inputs': [], 'outputs': [
-            {'name': 'ASTField', 'type': 'field', 'optional': True,
+            {'name': 'ASTField', 'type': 'Field', 'optional': True,
              'description': 'Field of adiabatic surface temperature'}]})
 
 
@@ -13,9 +13,9 @@ class HeatSolver(mupifApplication.Application):
     def __init__(self):
         mupifApplication.Application.__init__(self)
         self.metadata.update({'name': 'HeatSolver', 'type': 'Thermal analysis',
-                    'inputs': [{'name': 'ASTField', 'type': 'field', 'optional': False,
+                    'inputs': [{'name': 'ASTField', 'type': 'Field', 'optional': False,
                                 'description': 'Field of adiabatic surface temperature'}],
-                    'outputs': [{'name': 'TemperatureField', 'type': 'field', 'optional': True,
+                    'outputs': [{'name': 'TemperatureField', 'type': 'Field', 'optional': True,
                                  'description': 'Field of resulting temperature'}]})
 
 
@@ -23,8 +23,8 @@ class MechanicalSolver(mupifApplication.Application):
     def __init__(self):
         mupifApplication.Application.__init__(self)
         self.metadata.update({'name': 'MechanicalSolver', 'type': 'Mechanical analysis',
-                    'inputs': [{'name': 'TemperatureField', 'type': 'field', 'optional': False,
+                    'inputs': [{'name': 'TemperatureField', 'type': 'Field', 'optional': False,
                                 'description': 'Field of temperature in the structural domain'}],
-                    'outputs': [{'name': 'DisplacementField', 'type': 'field', 'optional': True,
+                    'outputs': [{'name': 'DisplacementField', 'type': 'Field', 'optional': True,
                                  'description': 'Field of resulting displacements'}]})
 
