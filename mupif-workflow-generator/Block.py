@@ -619,24 +619,35 @@ class WorkflowBlock(SequentialBlock):
         self.updateChildrenSizeAndPositionAndResizeSelf()
         self.widget.view.redrawDataLinks()
 
-    def addWorkflowDataSlotActions(self, menu):
-        def _add_input_workflow_dataslot():
+    def addExternalDataSlotActions(self, menu):
+        def _add_external_input_dataslot():
             new_slot = ExternalOutputDataSlot(self, "ExternalInputDataSlot", "auto")
             self.addDataSlot(new_slot)
 
-        def _add_output_workflow_dataslot():
+        def _add_external_output_dataslot():
             new_slot = ExternalInputDataSlot(self, "ExternalOutputDataSlot", "auto")
             self.addDataSlot(new_slot)
 
         temp_menu = menu.addMenu("Add external DataSlot")
         add_input = temp_menu.addAction("Input")
-        add_input.triggered.connect(_add_input_workflow_dataslot)
+        add_input.triggered.connect(_add_external_input_dataslot)
         add_output = temp_menu.addAction("Output")
-        add_output.triggered.connect(_add_output_workflow_dataslot)
+        add_output.triggered.connect(_add_external_output_dataslot)
 
     def addMenuItems(self, menu):
         ExecutionBlock.addMenuItems(self, menu)
-        self.addWorkflowDataSlotActions(menu)
+        self.addExternalDataSlotActions(menu)
+
+    def checkConsistency(self, execution=False):
+        data_slots = self.getAllDataSlots(True)
+        for ds in data_slots:
+            if not ds.optional and not ds.connected():
+                print("Some compulsory DataSlots are not connected.")
+                return False
+            if execution and (isinstance(ds, ExternalInputDataSlot) or isinstance(ds, ExternalOutputDataSlot)):
+                print("External DataSlots are not allowed in execution Workflow.")
+                return False
+        return True
 
 
 class VariableBlock(ExecutionBlock):

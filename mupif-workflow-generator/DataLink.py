@@ -98,7 +98,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.type = type
         self.optional = optional
         if isinstance(self, OutputDataSlot):
-            self.optional = False
+            self.optional = True
         if isinstance(self, ExternalInputDataSlot) or isinstance(self, ExternalOutputDataSlot):
             self.optional = False
 
@@ -118,6 +118,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.flow = FLOW_LEFT_TO_RIGHT
 
         self.maxConnections = -1  # A negative value means 'unlimited'.
+        if isinstance(self, InputDataSlot):
+            self.maxConnections = 1
+
         self.displayName = "%s (%s)" % (self.name, self.type)
 
         self.labelColor = QtGui.QColor(10, 10, 10)

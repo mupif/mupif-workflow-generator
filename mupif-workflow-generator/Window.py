@@ -97,36 +97,46 @@ class Window(QtWidgets.QMainWindow):
             print(formatCodeToText(code, level))
 
         def _generate_class_code():
-            code = "TODO"
-            # temporary printing into console
-            print("\nClass code:\n\n%s" % formatCodeToText(code))
-            # saving into file
-            file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self,
-                "Save Python Class Code to File",
-                os.path.join(QtCore.QDir.currentPath(), "class_code.py"),
-                "Python File (*.py)"
-            )
-            if file_path:
-                f = open(file_path, "w")
-                f.write(formatCodeToText(code))
-                f.close()
+            if self.widget.workflow.checkConsistency(execution=False):
+                code = "TODO"
+                # temporary printing into console
+                print("\nClass code:\n\n%s" % formatCodeToText(code))
+                # saving into file
+                file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self,
+                    "Save Python Class Code to File",
+                    os.path.join(QtCore.QDir.currentPath(), "class_code.py"),
+                    "Python File (*.py)"
+                )
+                if file_path:
+                    f = open(file_path, "w")
+                    f.write(formatCodeToText(code))
+                    f.close()
+            else:
+                print("Workflow.checkConsistency() returned False")
+                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
+                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected.")
 
         def _generate_execution_code():
-            code = self.widget.workflow.generateCode()
-            # temporary printing into console
-            print("\nExecution code:\n\n%s" % formatCodeToText(code))
-            # saving into file
-            file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self,
-                "Save Python Execution Code to File",
-                os.path.join(QtCore.QDir.currentPath(), "execution_code.py"),
-                "Python File (*.py)"
-            )
-            if file_path:
-                f = open(file_path, "w")
-                f.write(formatCodeToText(code))
-                f.close()
+            if self.widget.workflow.checkConsistency(execution=True):
+                code = self.widget.workflow.generateCode()
+                # temporary printing into console
+                print("\nExecution code:\n\n%s" % formatCodeToText(code))
+                # saving into file
+                file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    self,
+                    "Save Python Execution Code to File",
+                    os.path.join(QtCore.QDir.currentPath(), "execution_code.py"),
+                    "Python File (*.py)"
+                )
+                if file_path:
+                    f = open(file_path, "w")
+                    f.write(formatCodeToText(code))
+                    f.close()
+            else:
+                print("Workflow.checkConsistency() returned False")
+                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
+                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected.\nExecution Workflow also cannot contain external DataSlots.")
 
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
