@@ -491,6 +491,15 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.parent = e_parent_e
         self.setParentItem(e_parent_e)
 
+    def generateNewDataSlotName(self, base="data_slot_"):
+        names = [n.name for n in self.getAllDataSlots()]
+        i = 0
+        while True:
+            i += 1
+            new_name = "%s%d" % (base, i)
+            if not new_name in names:
+                return new_name
+
 
 class SequentialBlock (ExecutionBlock):
     """
@@ -623,11 +632,11 @@ class WorkflowBlock(SequentialBlock):
 
     def addExternalDataSlotItems(self, menu):
         def _add_external_input_dataslot():
-            new_slot = ExternalOutputDataSlot(self, "ExternalInputDataSlot", "auto")
+            new_slot = ExternalOutputDataSlot(self, self.generateNewDataSlotName("ExternalInputDataSlot_"), DataSlotType.Scalar)
             self.addDataSlot(new_slot)
 
         def _add_external_output_dataslot():
-            new_slot = ExternalInputDataSlot(self, "ExternalOutputDataSlot", "auto")
+            new_slot = ExternalInputDataSlot(self, self.generateNewDataSlotName("ExternalOutputDataSlot_"), DataSlotType.Scalar)
             self.addDataSlot(new_slot)
 
         temp_menu = menu.addMenu("Add external DataSlot")
@@ -647,9 +656,60 @@ class WorkflowBlock(SequentialBlock):
                 print("Some compulsory DataSlots are not connected.")
                 return False
             if execution and (isinstance(ds, ExternalInputDataSlot) or isinstance(ds, ExternalOutputDataSlot)):
-                print("External DataSlots are not allowed in execution Workflow.")
-                return False
+                if ds.connected():
+                    print("Usage of External DataSlots is not allowed in execution Workflow.")
+                    return False
         return True
+
+    def getAllExternalDataSlots(self, only=""):
+        eds = []
+        for slot in self.getAllDataSlots():
+            if isinstance(slot, ExternalInputDataSlot) and (only == "" or only == "in"):
+                eds.append(slot)
+            if isinstance(slot, ExternalOutputDataSlot) and (only == "" or only == "out"):
+                eds.append(slot)
+        return eds
+
+    def generateClassCode(self):
+        code = ["from mupif import Application as mupifApplication"]
+        code.append("")
+        code.append("")
+        code.append("class MyProblemWorkflow(mupifApplication.Application):")
+        code.append("\tdef __init__(self):")
+        code.append("\t\tmupifApplication.Application.__init__(self)")
+        code.append("\t\tself.metadata.update({'name': 'MyProblemWorkflow'})")
+
+        code_add = ""
+        for s in self.getAllExternalDataSlots("out"):
+            if s.connected():
+                params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
+                    s.name, DataSlotType.getNameFromType(s.type), False, "")
+
+                if code_add != "":
+                    code_add = "%s, " % code_add
+                code_add = "%s{%s}" % (code_add, params)
+        code.append("\t\tself.metadata.update({'inputs': [%s]})" % code_add)
+
+        code_add = ""
+        for s in self.getAllExternalDataSlots("in"):
+            if s.connected():
+                params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
+                s.name, DataSlotType.getNameFromType(s.type), True, "")
+
+                if code_add != "":
+                    code_add = "%s, " % code_add
+                code_add = "%s{%s}" % (code_add, params)
+        code.append("\t\tself.metadata.update({'outputs': [%s]})" % code_add)
+
+        code.append("\t")
+        code.append("\tdef getCriticalTimeStep(self):")
+        code.append("\t\tcts = [model.getCriticalTimeStep() for model in self.models()]")
+        code.append("\t\treturn min(cts)")
+        code.append("\t")
+        code.append("\tdef solveStep(self, tstep, stageID=0, runInBackground=False):")
+        code.append("\t\tpass")
+        code.append("")
+        return code
 
 
 class VariableBlock(ExecutionBlock):

@@ -53,7 +53,6 @@ DELETE_MODIFIER_KEY = QtCore.Qt.AltModifier if windows else QtCore.Qt.ControlMod
 
 
 class DataSlotType(Enum):
-    Auto = 0
     Scalar = 1
     Field = 2
 
@@ -113,10 +112,13 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.owner = owner
         self.type = type
         self.optional = optional
+        self.external = False
+
         if isinstance(self, OutputDataSlot):
             self.optional = True
         if isinstance(self, ExternalInputDataSlot) or isinstance(self, ExternalOutputDataSlot):
-            self.optional = False
+            self.optional = True
+            self.external = True
 
         self.uuid = str(uuid.uuid4())
 
@@ -137,7 +139,8 @@ class DataSlot(QtWidgets.QGraphicsItem):
         if isinstance(self, InputDataSlot):
             self.maxConnections = 1
 
-        self.displayName = "%s (%s)" % (self.name, DataSlotType.getNameFromType(self.type))
+        self.displayName = "DataSlot"
+        self.updateDisplayName()
 
         self.labelColor = QtGui.QColor(10, 10, 10)
 
@@ -157,6 +160,14 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def setTotalWidth(self, val):
         self.w_tot = val
+
+    def updateDisplayName(self):
+        self.displayName = "%s (%s)" % (self.name, DataSlotType.getNameFromType(self.type))
+        self.owner.callUpdatePositionOfWholeWorkflow()
+
+    def setType(self, val):
+        self.type = val
+        self.updateDisplayName()
 
     def updateColor(self):
         if self.hover:
@@ -191,17 +202,18 @@ class DataSlot(QtWidgets.QGraphicsItem):
         if target is self:
             print("Can't connect DataSlot to itself.")
             return
-            # raise KnobConnectionError(
-            #     "Can't connect a Knob to itself.")
 
         if not ((isinstance(self, InputDataSlot) and isinstance(target, OutputDataSlot)) or (
                     isinstance(self, OutputDataSlot) and isinstance(target, InputDataSlot))):
             print("Only InputDataSlot and OutputDataSlot can be connected.")
             return
-            # raise KnobConnectionError(
-            #     "Can't connect Knobs of same type.")
 
-        if not self.type == target.type and not self.type == "auto" and not target.type == "auto":
+        if self.external:
+            self.setType(target.type)
+        elif target.external:
+            target.setType(self.type)
+
+        if not self.type == target.type:
             print("Two slots of different value types cannot be connected.")
             return
 
@@ -385,6 +397,10 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.scene().removeItem(self)
         del self
 
+    def rename(self, val):
+        self.name = val
+        self.updateDisplayName()
+
     def addSlotMenuActions(self, menu):
         sub_menu = menu.addMenu("Data slot")
 
@@ -392,18 +408,16 @@ class DataSlot(QtWidgets.QGraphicsItem):
             temp = QtWidgets.QInputDialog()
             new_name, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Change name of the slot", "New name")
             if ok_pressed:
-                self.name = new_name
-                self.displayName = self.name
+                self.rename(new_name)
                 self.owner.callUpdatePositionOfWholeWorkflow()
 
-        rename_slot_action = sub_menu.addAction("Rename")
-        rename_slot_action.triggered.connect(_rename)
+        if self.external:
+            rename_slot_action = sub_menu.addAction("Rename")
+            rename_slot_action.triggered.connect(_rename)
 
         def _delete():
             self.destroy()
             self.owner.callUpdatePositionOfWholeWorkflow()
-
-            # TODO resize block after deletion
 
         delete_slot_action = sub_menu.addAction("Delete")
         delete_slot_action.triggered.connect(_delete)
@@ -464,12 +478,12 @@ class OutputDataSlot (DataSlot):
 
 
 class ExternalInputDataSlot(InputDataSlot):
-    def __init__(self, owner, name, type, optional=False):
+    def __init__(self, owner, name, type, optional=True):
         InputDataSlot.__init__(self, owner, name, type, optional)
 
 
 class ExternalOutputDataSlot(OutputDataSlot):
-    def __init__(self, owner, name, type, optional=False):
+    def __init__(self, owner, name, type, optional=True):
         OutputDataSlot.__init__(self, owner, name, type, optional)
 
 

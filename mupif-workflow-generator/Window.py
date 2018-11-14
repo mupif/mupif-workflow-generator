@@ -98,7 +98,7 @@ class Window(QtWidgets.QMainWindow):
 
         def _generate_class_code():
             if self.widget.workflow.checkConsistency(execution=False):
-                code = "TODO"
+                code = self.widget.workflow.generateClassCode()
                 # temporary printing into console
                 print("\nClass code:\n\n%s" % formatCodeToText(code))
                 # saving into file
@@ -115,7 +115,8 @@ class Window(QtWidgets.QMainWindow):
             else:
                 print("Workflow.checkConsistency() returned False")
                 QtWidgets.QMessageBox.about(self, "Workflow consistency error",
-                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected.")
+                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
+                                            "DataSlots are connected.")
 
         def _generate_execution_code():
             if self.widget.workflow.checkConsistency(execution=True):
@@ -136,7 +137,9 @@ class Window(QtWidgets.QMainWindow):
             else:
                 print("Workflow.checkConsistency() returned False")
                 QtWidgets.QMessageBox.about(self, "Workflow consistency error",
-                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected.\nExecution Workflow also cannot contain external DataSlots.")
+                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
+                                            "DataSlots are connected.\nExecution Workflow also cannot contain external "
+                                            "DataSlots.")
 
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
@@ -183,9 +186,9 @@ class Window(QtWidgets.QMainWindow):
             action = QtWidgets.QAction(api.__name__, self)
             self.apis_list_of_models.addAction(action)
 
-    def close_application(self):\
+    def close_application(self):
         sys.exit()
 
-    def resizeEvent(self, QResizeEvent):
+    def resizeEvent(self, event):
         self.widget.setGeometry(10, 20, self.width() - 20, self.height() - 30)
 
