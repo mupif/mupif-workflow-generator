@@ -98,7 +98,7 @@ class Window(QtWidgets.QMainWindow):
 
         def _generate_class_code():
             if self.widget.workflow.checkConsistency(execution=False):
-                code = self.widget.workflow.generateClassCode()
+                code = self.widget.workflow.getClassCode()
                 # temporary printing into console
                 print("\nClass code:\n\n%s" % formatCodeToText(code))
                 # saving into file
@@ -120,7 +120,7 @@ class Window(QtWidgets.QMainWindow):
 
         def _generate_execution_code():
             if self.widget.workflow.checkConsistency(execution=True):
-                code = self.widget.workflow.generateExecutionCode()
+                code = self.widget.workflow.getExecutionCode()
                 # temporary printing into console
                 print("\nExecution code:\n\n%s" % formatCodeToText(code))
                 # saving into file

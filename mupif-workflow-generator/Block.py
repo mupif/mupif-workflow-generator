@@ -47,13 +47,6 @@ import json
 """
 
 
-def self_text_add(is_class):
-    if is_class:
-        return "self."
-    else:
-        return ""
-
-
 def generate_indents(n):
     return "\t"*n
 
@@ -128,13 +121,38 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             return self.getListOfModelClassnames().index(model_name)
         return -1
 
-    def generateInitCode(self):
+    def generateInitCode(self, indent=0):
         """Generate initialization block code"""
-        return ["# initialization code of %s (%s)" % (self.code_name, self.name)]
+        code = ["", "# initialization code of %s (%s)" % (self.code_name, self.name)]
+        return push_indents_before_each_line(code, indent)
 
-    def generateCode(self):
+    def generateExecutionCode(self, indent=0):
         """returns tuple containing strings with code lines"""
-        return ["# execution code of %s (%s)" % (self.code_name, self.name)]
+        code = ["", "# execution code of %s (%s)" % (self.code_name, self.name)]
+        return push_indents_before_each_line(code, indent)
+
+    def generateBlockInputs(self):
+        input_slots = self.getDataSlots(InputDataSlot)
+        # print ("Slots: ",input_slots)
+        code = []
+        # generate input code for each block input
+        for iSlot in input_slots:
+            # try to locate corresponding dataLink
+            # print (iLink)
+            if len(iSlot.dataLinks) == 0 and iSlot.optional == False:
+                # raise AttributeError("No input link for slot detected")
+                code.append("# No input for slot %s detected" % iSlot.name)
+            elif len(iSlot.dataLinks) > 1:
+                raise AttributeError("Multiple input links for slot detected")
+            else:
+                source = iSlot.dataLinks[0]
+                code.append("%s.set(name=%s, value=%s)" % (self.name, iSlot.name, source))
+        return code
+
+    def generateOutputDataSlotGetFunction(self, slot):
+        if slot in self.getDataSlots(OutputDataSlot):
+            return "self.%s.get(name='%s')" % (self.code_name, slot.name)
+        return ""
 
     def getChildItems(self):
         return self.childItems()
@@ -240,31 +258,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         if cls:
             return_array = list(filter(lambda k: k.__class__ is cls, return_array))
         return return_array
-
-    def generateBlockInputs(self):
-        input_slots = self.getDataSlots(InputDataSlot)
-        # print ("Slots: ",input_slots)
-        code = []
-        # generate input code for each block input
-        for iSlot in input_slots:
-            # try to locate corresponding dataLink
-            # print (iLink)
-            if len(iSlot.dataLinks) == 0 and iSlot.optional == False:
-                # raise AttributeError("No input link for slot detected")
-                code.append("# No input for slot %s detected" % iSlot.name)
-            elif len(iSlot.dataLinks) > 1:
-                raise AttributeError("Multiple input links for slot detected")
-            else:
-                source = iSlot.dataLinks[0]
-                code.append("%s.set(name=%s, value=%s)" % (self.name, iSlot.name, source))
-        return code
-
-    def generateExecutionCode(self, indent=0, class_code=False):
-        code = ["# template for block's execution code generation"]
-        return push_indents_before_each_line(code)
-
-    def generateExecCodeForClass(self, indent=0):
-        return self.generateExecutionCode(indent=indent, class_code=True)
 
     def boundingRect(self):
         """Return the bounding box of the Node, limited in height to its Header.
@@ -569,13 +562,13 @@ class SequentialBlock (ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
 
-    def generateCode(self):
-        code = ["# Generating code for %s" % self.name]
-        for i_block in self.getChildExecutionBlocks():
-            code.append("# Generating code for %s"%(i_block.name))
-            code.extend(i_block.generateBlockInputs())  # inputs generated based on block requirements
-            code.extend(i_block.generateCode())
-        return code
+    def generateExecutionCode(self, indent=0):
+        code = ExecutionBlock.generateExecutionCode()
+
+        for block in self.getChildExecutionBlocks():
+            code.extend(block.generateExecutionCode())
+
+        return push_indents_before_each_line(code, indent)
 
     def boundingRect(self):
         """Return the bounding box of the Node, limited in height to its Header.
@@ -731,79 +724,111 @@ class WorkflowBlock(SequentialBlock):
                 eds.append(slot)
         return eds
 
-    def generateExecutionCode(self):
+    def generateWorkflowCode(self, class_code):
+        if class_code:
+            workflow_classname = "MyProblemClassWorkflow"
+        else:
+            workflow_classname = "MyProblemExecutionWorkflow"
+
+        #
+
         self.generateAllBlockCodeNames()
 
-        return self.generateCode()
-
-    def generateClassCode(self):
-        self.generateAllBlockCodeNames()
-
-        model_blocks = self.getChildExecutionBlocks(ModelBlock)
+        all_model_blocks = self.getChildExecutionBlocks(None, True)
+        child_blocks = self.getChildExecutionBlocks()
 
         code = ["from mupif import Application as mupifApplication"]
         code.append("from mupif import Workflow as mupifWorkflow")
 
-        for model in model_blocks:
+        for model in self.getChildExecutionBlocks(ModelBlock, True):
             code.append(model.getModelDependency())
 
         code.append("")
         code.append("")
-        code.append("class MyProblemWorkflow(mupifWorkflow.Workflow):")
+        code.append("class %s(mupifWorkflow.Workflow):" % workflow_classname)
         code.append("\tdef __init__(self):")
         code.append("\t\tmupifApplication.Application.__init__(self)")
-        code.append("\t\tself.metadata.update({'name': 'MyProblemWorkflow'})")
 
-        code_add = ""
-        for s in self.getAllExternalDataSlots("out"):
-            if s.connected():
-                params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
-                    s.name, DataSlotType.getNameFromType(s.type), False, "")
+        # metadata
 
-                if code_add != "":
-                    code_add = "%s, " % code_add
-                code_add = "%s{%s}" % (code_add, params)
-        code.append("\t\tself.metadata.update({'inputs': [%s]})" % code_add)
+        if class_code:
+            code.append("\t\tself.metadata.update({'name': '%s'})" % workflow_classname)
 
-        code_add = ""
-        for s in self.getAllExternalDataSlots("in"):
-            if s.connected():
-                params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
-                s.name, DataSlotType.getNameFromType(s.type), True, "")
+            code_add = ""
+            for s in self.getAllExternalDataSlots("out"):
+                if s.connected():
+                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
+                        s.name, DataSlotType.getNameFromType(s.type), False, "")
 
-                if code_add != "":
-                    code_add = "%s, " % code_add
-                code_add = "%s{%s}" % (code_add, params)
-        code.append("\t\tself.metadata.update({'outputs': [%s]})" % code_add)
+                    if code_add != "":
+                        code_add = "%s, " % code_add
+                    code_add = "%s{%s}" % (code_add, params)
 
-        code.append("\t\t")
+            code.append("\t\tself.metadata.update({'inputs': [%s]})" % code_add)
 
-        for model in model_blocks:
-            code.append("\t\tself.%s = %s()" % (model.code_name, model.name))
+            code_add = ""
+            for s in self.getAllExternalDataSlots("in"):
+                if s.connected():
+                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
+                        s.name, DataSlotType.getNameFromType(s.type), True, "")
+
+                    if code_add != "":
+                        code_add = "%s, " % code_add
+                    code_add = "%s{%s}" % (code_add, params)
+            code.append("\t\tself.metadata.update({'outputs': [%s]})" % code_add)
+
+        # init codes of child blocks
+
+        for model in all_model_blocks:
+            code.extend(model.generateInitCode(2))
+
+        # get critical time step
+
+        if class_code:
+            code.append("\t")
+            code.append("\tdef getCriticalTimeStep(self):")
+            code_add = ""
+            i = 0
+            for model in child_blocks:
+                if i:
+                    code_add += ", "
+                code_add += "self.%s.getCriticalTimeStep()" % model.code_name
+                i += 1
+            code.append("\t\treturn min(%s)" % code_add)
 
         code.append("\t")
-        code.append("\tdef getCriticalTimeStep(self):")
-        code_add = ""
-        i = 0
-        for model in model_blocks:
-            if i:
-                code_add += ", "
-            code_add += "self.%s.getCriticalTimeStep()" % model.code_name
-            i += 1
-        code.append("\t\treturn min(%s)" % code_add)
-        code.append("\t")
-        code.append("\tdef solveStep(self, tstep, stageID=0, runInBackground=False):")
-        for model in model_blocks:
-            code.extend(model.generateExecCodeForClass(2))
 
-            # for slot in model.getDataSlots(InputDataSlot):
-            #     linked_slot = slot.getLinkedDataSlot()
-            #     code.append("\t\tself.%s.set(name='%s', value=self.%s.get(name='%s'))" % (
-            #         model.code_name, slot.name, linked_slot.owner.code_name, linked_slot.name))
-            # code.append("\t\tself.%s.solveStep(tstep)" % model.code_name)
+        # solve or solveStep
+
+        if class_code:
+            code.append("\tdef solveStep(self, tstep, stageID=0, runInBackground=False):")
+        else:
+            code.append("\tdef solve(self, runInBackground=False):")
+
+        for model in child_blocks:
+            code.extend(model.generateExecutionCode(2))
+
+        if not class_code:
+            code.append("\t\tself.terminate()")
+            code.append("")
+
         code.append("")
 
+        # execution
+
+        if not class_code:
+            code.append("problem = %s()" % workflow_classname)
+            code.append("problem.solve()")
+            code.append("")
+            code.append("")
+
         return replace_tabs_with_spaces_for_each_line(code)
+
+    def getExecutionCode(self):
+        return self.generateWorkflowCode(class_code=False)
+
+    def getClassCode(self):
+        return self.generateWorkflowCode(class_code=True)
 
     def getAllBlockCodeNames(self):
         return [block.code_name for block in self.getChildExecutionBlocks(None, True)]
@@ -859,6 +884,17 @@ class VariableBlock(ExecutionBlock):
     def generateCodeName(self, base_name='variable_'):
         ExecutionBlock.generateCodeName(self, base_name)
 
+    def generateExecutionCode(self, indent=0):
+        return []
+
+    def generateInitCode(self, indent=0):
+        code = ExecutionBlock.generateInitCode(self)
+        code.append("self.%s = %le" % (self.code_name, self.value))
+        return push_indents_before_each_line(code, indent)
+
+    def generateOutputDataSlotGetFunction(self, slot):
+        return "%le" % self.value
+
 
 class ModelBlock(ExecutionBlock):
     def __init__(self, parent, workflow, model=None, model_name=None):
@@ -872,16 +908,20 @@ class ModelBlock(ExecutionBlock):
     def getOutputSlots(self):
         return self.model.getOutputSlots()
 
-    def generateExecutionCode(self, indent=0, class_code=False):
-        code = []
-        c_self = self_text_add(class_code)
+    def generateInitCode(self, indent=0):
+        code = ExecutionBlock.generateInitCode(self)
+        code.append("self.%s = %s()" % (self.code_name, self.name))
+        return push_indents_before_each_line(code, indent)
+
+    def generateExecutionCode(self, indent=0):
+        code = ExecutionBlock.generateExecutionCode(self)
 
         for slot in self.getDataSlots(InputDataSlot):
             linked_slot = slot.getLinkedDataSlot()
-            code.append("%s%s.set(name='%s', value=%s%s.get(name='%s'))" % (
-                c_self, self.code_name, slot.name, c_self, linked_slot.owner.code_name, linked_slot.name))
+            code.append("self.%s.set(name='%s', value=%s)" % (
+                self.code_name, slot.name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot)))
 
-        code.append("%s%s.solveStep(tstep)" % (c_self, self.name))
+        code.append("self.%s.solveStep(tstep)" % self.code_name)
 
         return push_indents_before_each_line(code, indent)
 
@@ -929,38 +969,59 @@ class TimeLoopBlock(SequentialBlock):
         self.addDataSlot(InputDataSlot(self, "target_time", DataSlotType.Scalar, False))
 
     def getStartTime(self):
-        if len(self.getDataSlotWithName("start_time").dataLinks):
-            this_slot = self.getDataSlotWithName("start_time")
-            connected_block = this_slot.dataLinks[0].giveTheOtherSlot(this_slot).owner
-            if type(connected_block).__name__ == "VariableBlock":
-                return connected_block.getValue()
-        return 0
+        connected_slot = self.getDataSlotWithName("start_time").getLinkedDataSlot()
+        if connected_slot:
+            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
+        return "0."  # TODO call ERROR
 
     def getTargetTime(self):
-        if len(self.getDataSlotWithName("target_time").dataLinks):
-            this_slot = self.getDataSlotWithName("target_time")
-            connected_block = this_slot.dataLinks[0].giveTheOtherSlot(this_slot).owner
-            if type(connected_block).__name__ == "VariableBlock":
-                return connected_block.getValue()
-        return 0
+        connected_slot = self.getDataSlotWithName("target_time").getLinkedDataSlot()
+        if connected_slot:
+            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
+        return "0."  # TODO call ERROR
 
-    def generateCode(self):
-        code = ["time=%f" % self.getStartTime(),
-                "while time<=%f:" % self.getTargetTime()]
+    def generateInitCode(self, indent=0):
+        return []
+
+    def generateExecutionCode(self, indent=0):
+        code = ExecutionBlock.generateExecutionCode(self)
+        var_time = "%s_time" % self.code_name
+        var_target_time = "%s_target_time" % self.code_name
+        var_dt = "%s_dt" % self.code_name
+        var_compute = "%s_compute" % self.code_name
+
+        code.append("%s = %s" % (var_time, self.getStartTime()))
+        code.append("%s = %s" % (var_target_time, self.getTargetTime()))
+        code.append("%s = True" % var_compute)
+
+        # code.append("while %s < %s:" % (var_time, var_target_time))
+        code.append("while %s:" % var_compute)
         while_code = []
-        dt_code = "deltaT = min("
-        for i in self.getChildExecutionBlocks():
-            if isinstance(i, ModelBlock):
-                dt_code += ("%s.getCriticalTimeStep()" % i.name)
-        dt_code += ")"
-        while_code.append(dt_code)
-        while_code.extend(SequentialBlock.generateCode(self))
-        while_code.append("time=min(time+deltaT, target_time)")
 
-        code.append(while_code)
+        dt_code = "\t%s = min(" % var_dt
+        first = True
+        for model in self.getChildExecutionBlocks(ModelBlock):
+            if not first:
+                dt_code += ", "
+            dt_code += "self.%s.getCriticalTimeStep()" % model.code_name
+            first = False
+        dt_code += ")"
+
+        while_code.append("\tif %s + 1.e-6 > %s:" % (var_time, var_target_time))
+        while_code.append("\t\t%s = False" % var_compute)
+
+        for block in self.getChildExecutionBlocks():
+            while_code.extend(block.generateExecutionCode(1))
+
+        while_code.append("")
+        while_code.append(dt_code)
+
+        while_code.append("\t%s = min(%s+%s, %s)" % (var_time, var_time, var_dt, var_target_time))
+
+        code.extend(while_code)
         code.append("")
 
-        return code
+        return push_indents_before_each_line(code, indent)
 
     def generateCodeName(self, base_name='timeloop_'):
         ExecutionBlock.generateCodeName(self, base_name)
@@ -978,10 +1039,10 @@ class CustomPythonCodeBlock(ExecutionBlock):
         ExecutionBlock.__init__(self, parent, workflow)
         self.code_lines = ["# CustomPythonBlock code"]
 
-    def generateInitCode(self):
+    def generateInitCode(self, indent=0):
         return []
 
-    def generateCode(self):
+    def generateExecutionCode(self, indent=0):
         return self.code_lines
 
     def setCodeLines(self, lines):
