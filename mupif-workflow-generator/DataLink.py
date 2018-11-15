@@ -454,6 +454,11 @@ class DataSlot(QtWidgets.QGraphicsItem):
         answer.update({'name': self.name, 'type': "%s" % DataSlotType.getNameFromType(self.type)})
         return answer
 
+    def getLinkedDataSlot(self):
+        if len(self.dataLinks) == 1:
+            return self.dataLinks[0].giveTheOtherSlot(self)
+        return None
+
 
 class InputDataSlot (DataSlot):
     """

@@ -47,11 +47,37 @@ import json
 """
 
 
+def self_text_add(is_class):
+    if is_class:
+        return "self."
+    else:
+        return ""
+
+
+def generate_indents(n):
+    return "\t"*n
+
+
+def push_indents_before_each_line(code_lines, indent):
+    new_code_lines = []
+    for line in code_lines:
+        new_code_lines.append(generate_indents(indent) + line)
+    return new_code_lines
+
+
+def replace_tabs_with_spaces_for_each_line(code_lines):
+    new_code_lines = []
+    for line in code_lines:
+        new_code_lines.append(line.replace("\t", " "*4))
+    return new_code_lines
+
+
 class ExecutionBlock (QtWidgets.QGraphicsWidget):
     """
     Abstract class representing execution block
     """
     list_of_models = []
+    list_of_model_dependencies = []
     list_of_block_classes = []
 
     def __init__(self, parent, workflow, **kwargs):
@@ -59,6 +85,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.workflow = workflow
         self.name = kwargs.get("name", "ExecutionBlock")
         self.parent = parent
+
+        self.code_name = ""
 
         # This unique id is useful for serialization/reconstruction.
         self.uuid = str(uuid.uuid4())
@@ -89,12 +117,24 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
+    @staticmethod
+    def getIDOfModelInList(model):
+        if model in ExecutionBlock.list_of_models:
+            return ExecutionBlock.list_of_models.index(model)
+        return -1
+
+    def getIDOfModelNameInList(self, model_name):
+        if model_name in self.getListOfModelClassnames():
+            return self.getListOfModelClassnames().index(model_name)
+        return -1
+
     def generateInitCode(self):
         """Generate initialization block code"""
+        return ["# initialization code of %s (%s)" % (self.code_name, self.name)]
 
     def generateCode(self):
         """returns tuple containing strings with code lines"""
-        return ["block_execution"]
+        return ["# execution code of %s (%s)" % (self.code_name, self.name)]
 
     def getChildItems(self):
         return self.childItems()
@@ -154,6 +194,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         The position of the slot is set relative to this Node and depends on it
         either being an Input- or Output slot.
         """
+        # TODO
         slot_names = [k.name for k in self.getDataSlots()]
         # print("adding slot, existing Slots:", self.getDataSlots(), slot_names)
         if slot.name in slot_names:
@@ -217,6 +258,13 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
                 source = iSlot.dataLinks[0]
                 code.append("%s.set(name=%s, value=%s)" % (self.name, iSlot.name, source))
         return code
+
+    def generateExecutionCode(self, indent=0, class_code=False):
+        code = ["# template for block's execution code generation"]
+        return push_indents_before_each_line(code)
+
+    def generateExecCodeForClass(self, indent=0):
+        return self.generateExecutionCode(indent=indent, class_code=True)
 
     def boundingRect(self):
         """Return the bounding box of the Node, limited in height to its Header.
@@ -481,6 +529,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         return array
 
     @staticmethod
+    def getListOfModelDependencies():
+        return ExecutionBlock.list_of_model_dependencies
+
+    @staticmethod
     def getListOfStandardBlockClassnames():
         array = [m.__name__ for m in ExecutionBlock.list_of_block_classes]
         return array
@@ -499,6 +551,15 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             new_name = "%s%d" % (base, i)
             if not new_name in names:
                 return new_name
+
+    def generateCodeName(self, base_name='block_'):
+        i = 0
+        while(True):
+            i += 1
+            new_name = "%s%d" % (base_name, i)
+            if not new_name in self.workflow.getAllBlockCodeNames():
+                self.code_name = new_name
+                return
 
 
 class SequentialBlock (ExecutionBlock):
@@ -670,11 +731,25 @@ class WorkflowBlock(SequentialBlock):
                 eds.append(slot)
         return eds
 
+    def generateExecutionCode(self):
+        self.generateAllBlockCodeNames()
+
+        return self.generateCode()
+
     def generateClassCode(self):
+        self.generateAllBlockCodeNames()
+
+        model_blocks = self.getChildExecutionBlocks(ModelBlock)
+
         code = ["from mupif import Application as mupifApplication"]
+        code.append("from mupif import Workflow as mupifWorkflow")
+
+        for model in model_blocks:
+            code.append(model.getModelDependency())
+
         code.append("")
         code.append("")
-        code.append("class MyProblemWorkflow(mupifApplication.Application):")
+        code.append("class MyProblemWorkflow(mupifWorkflow.Workflow):")
         code.append("\tdef __init__(self):")
         code.append("\t\tmupifApplication.Application.__init__(self)")
         code.append("\t\tself.metadata.update({'name': 'MyProblemWorkflow'})")
@@ -701,15 +776,43 @@ class WorkflowBlock(SequentialBlock):
                 code_add = "%s{%s}" % (code_add, params)
         code.append("\t\tself.metadata.update({'outputs': [%s]})" % code_add)
 
+        code.append("\t\t")
+
+        for model in model_blocks:
+            code.append("\t\tself.%s = %s()" % (model.code_name, model.name))
+
         code.append("\t")
         code.append("\tdef getCriticalTimeStep(self):")
-        code.append("\t\tcts = [model.getCriticalTimeStep() for model in self.models()]")
-        code.append("\t\treturn min(cts)")
+        code_add = ""
+        i = 0
+        for model in model_blocks:
+            if i:
+                code_add += ", "
+            code_add += "self.%s.getCriticalTimeStep()" % model.code_name
+            i += 1
+        code.append("\t\treturn min(%s)" % code_add)
         code.append("\t")
         code.append("\tdef solveStep(self, tstep, stageID=0, runInBackground=False):")
-        code.append("\t\tpass")
+        for model in model_blocks:
+            code.extend(model.generateExecCodeForClass(2))
+
+            # for slot in model.getDataSlots(InputDataSlot):
+            #     linked_slot = slot.getLinkedDataSlot()
+            #     code.append("\t\tself.%s.set(name='%s', value=self.%s.get(name='%s'))" % (
+            #         model.code_name, slot.name, linked_slot.owner.code_name, linked_slot.name))
+            # code.append("\t\tself.%s.solveStep(tstep)" % model.code_name)
         code.append("")
-        return code
+
+        return replace_tabs_with_spaces_for_each_line(code)
+
+    def getAllBlockCodeNames(self):
+        return [block.code_name for block in self.getChildExecutionBlocks(None, True)]
+
+    def generateAllBlockCodeNames(self):
+        for block in self.getChildExecutionBlocks(None, True):
+            block.code_name = ""
+        for block in self.getChildExecutionBlocks(None, True):
+            block.generateCodeName()
 
 
 class VariableBlock(ExecutionBlock):
@@ -753,6 +856,9 @@ class VariableBlock(ExecutionBlock):
         ExecutionBlock.initializeFromJSONData(self, json_data)
         self.setValue(json_data['value'])
 
+    def generateCodeName(self, base_name='variable_'):
+        ExecutionBlock.generateCodeName(self, base_name)
+
 
 class ModelBlock(ExecutionBlock):
     def __init__(self, parent, workflow, model=None, model_name=None):
@@ -766,8 +872,18 @@ class ModelBlock(ExecutionBlock):
     def getOutputSlots(self):
         return self.model.getOutputSlots()
 
-    def generateCode(self):
-        return ["%s.solveStep(tstep)" % self.name]
+    def generateExecutionCode(self, indent=0, class_code=False):
+        code = []
+        c_self = self_text_add(class_code)
+
+        for slot in self.getDataSlots(InputDataSlot):
+            linked_slot = slot.getLinkedDataSlot()
+            code.append("%s%s.set(name='%s', value=%s%s.get(name='%s'))" % (
+                c_self, self.code_name, slot.name, c_self, linked_slot.owner.code_name, linked_slot.name))
+
+        code.append("%s%s.solveStep(tstep)" % (c_self, self.name))
+
+        return push_indents_before_each_line(code, indent)
 
     def getDictForJSON(self):
         answer = ExecutionBlock.getDictForJSON(self)
@@ -793,6 +909,17 @@ class ModelBlock(ExecutionBlock):
                 if my_class.__name__ not in ExecutionBlock.getListOfModelClassnames() and inspect.isclass(my_class):
                     if issubclass(my_class, mupifApplication.Application):
                         ExecutionBlock.list_of_models.append(my_class)
+                        ExecutionBlock.list_of_model_dependencies.append("import %s from %s" % (
+                            my_class.__name__, py_mod.__name__))
+
+    def generateCodeName(self, base_name='model_'):
+        ExecutionBlock.generateCodeName(self, base_name)
+
+    def getModelDependency(self):
+        model_id = self.getIDOfModelNameInList(self.name)
+        if model_id > -1:
+            return ExecutionBlock.list_of_model_dependencies[model_id]
+        return "# dependency of %s not found" % self.code_name
 
 
 class TimeLoopBlock(SequentialBlock):
@@ -835,6 +962,9 @@ class TimeLoopBlock(SequentialBlock):
 
         return code
 
+    def generateCodeName(self, base_name='timeloop_'):
+        ExecutionBlock.generateCodeName(self, base_name)
+
 
 def linesToText(lines):
     text = ""
@@ -847,6 +977,9 @@ class CustomPythonCodeBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
         self.code_lines = ["# CustomPythonBlock code"]
+
+    def generateInitCode(self):
+        return []
 
     def generateCode(self):
         return self.code_lines
