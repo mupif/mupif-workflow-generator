@@ -22,6 +22,7 @@
 #
 
 from mupif import Application as mupifApplication
+from mupif import Workflow as mupifWorkflow
 import inspect
 import imp
 from DataLink import *
@@ -893,7 +894,7 @@ class VariableBlock(ExecutionBlock):
         return push_indents_before_each_line(code, indent)
 
     def generateOutputDataSlotGetFunction(self, slot):
-        return "%le" % self.value
+        return "self.%s" % self.code_name
 
 
 class ModelBlock(ExecutionBlock):
@@ -947,7 +948,8 @@ class ModelBlock(ExecutionBlock):
             if not mod[0] == "_":
                 my_class = getattr(py_mod, mod)
                 if my_class.__name__ not in ExecutionBlock.getListOfModelClassnames() and inspect.isclass(my_class):
-                    if issubclass(my_class, mupifApplication.Application):
+                    if issubclass(my_class, mupifApplication.Application) or issubclass(my_class,
+                                                                                        mupifWorkflow.Workflow):
                         ExecutionBlock.list_of_models.append(my_class)
                         ExecutionBlock.list_of_model_dependencies.append("import %s from %s" % (
                             my_class.__name__, py_mod.__name__))
