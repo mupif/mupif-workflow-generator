@@ -21,10 +21,9 @@
 # Boston, MA  02110-1301  USA
 #
 
-from mupif import Application as mupifApplication
-from mupif import Workflow as mupifWorkflow
+import mupif
 import inspect
-import imp
+import importlib.util
 from DataLink import *
 from Button import *
 import uuid
@@ -738,17 +737,16 @@ class WorkflowBlock(SequentialBlock):
         all_model_blocks = self.getChildExecutionBlocks(None, True)
         child_blocks = self.getChildExecutionBlocks()
 
-        code = ["from mupif import Application as mupifApplication"]
-        code.append("from mupif import Workflow as mupifWorkflow")
+        code = ["import mupif"]
 
         for model in self.getChildExecutionBlocks(ModelBlock, True):
             code.append(model.getModelDependency())
 
         code.append("")
         code.append("")
-        code.append("class %s(mupifWorkflow.Workflow):" % workflow_classname)
+        code.append("class %s(mupif.Workflow.Workflow):" % workflow_classname)
         code.append("\tdef __init__(self):")
-        code.append("\t\tmupifApplication.Application.__init__(self)")
+        code.append("\t\tmupif.Workflow.Workflow.__init__(self)")
 
         # metadata
 
@@ -943,13 +941,15 @@ class ModelBlock(ExecutionBlock):
     @staticmethod
     def loadModelsFromGivenFile(full_path):
         mod_name, file_ext = os.path.splitext(os.path.split(full_path)[-1])
-        py_mod = imp.load_source(mod_name, full_path)
+        spec = importlib.util.spec_from_file_location(mod_name, full_path)
+        py_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(py_mod)
         for mod in dir(py_mod):
             if not mod[0] == "_":
                 my_class = getattr(py_mod, mod)
                 if my_class.__name__ not in ExecutionBlock.getListOfModelClassnames() and inspect.isclass(my_class):
-                    if issubclass(my_class, mupifApplication.Application) or issubclass(my_class,
-                                                                                        mupifWorkflow.Workflow):
+                    if issubclass(my_class, mupif.Application.Application) or issubclass(my_class,
+                                                                                        mupif.Workflow.Workflow):
                         ExecutionBlock.list_of_models.append(my_class)
                         ExecutionBlock.list_of_model_dependencies.append("import %s from %s" % (
                             my_class.__name__, py_mod.__name__))
