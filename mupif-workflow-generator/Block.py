@@ -126,7 +126,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         code = ["", "# initialization code of %s (%s)" % (self.code_name, self.name)]
         return push_indents_before_each_line(code, indent)
 
-    def generateExecutionCode(self, indent=0, time=''):
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         """returns tuple containing strings with code lines"""
         code = ["", "# execution code of %s (%s)" % (self.code_name, self.name)]
         return push_indents_before_each_line(code, indent)
@@ -562,7 +562,7 @@ class SequentialBlock (ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
 
-    def generateExecutionCode(self, indent=0, time=''):
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         code = ExecutionBlock.generateExecutionCode(self)
 
         for block in self.getChildExecutionBlocks():
@@ -891,7 +891,7 @@ class VariableBlock(ExecutionBlock):
     def generateCodeName(self, base_name='variable_'):
         ExecutionBlock.generateCodeName(self, base_name)
 
-    def generateExecutionCode(self, indent=0, time=''):
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         return []
 
     def generateInitCode(self, indent=0):
@@ -927,7 +927,7 @@ class ModelBlock(ExecutionBlock):
         code.append("self.%s = %s(%s)" % (self.code_name, self.name, input_file_add))
         return push_indents_before_each_line(code, indent)
 
-    def generateExecutionCode(self, indent=0, time=''):
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         code = ExecutionBlock.generateExecutionCode(self)
 
         for slot in self.getDataSlots(InputDataSlot):
@@ -935,7 +935,7 @@ class ModelBlock(ExecutionBlock):
             code.append("self.%s.set(%s)" % (
                 self.code_name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot, time)))
 
-        code.append("self.%s.solveStep(tstep)" % self.code_name)
+        code.append("self.%s.solveStep(%s)" % (self.code_name, timestep))
 
         return push_indents_before_each_line(code, indent)
 
@@ -967,8 +967,8 @@ class ModelBlock(ExecutionBlock):
                         if issubclass(my_class, mupif.Application.Application) or issubclass(my_class,
                                                                                             mupif.Workflow.Workflow):
                             ExecutionBlock.list_of_models.append(my_class)
-                            ExecutionBlock.list_of_model_dependencies.append("import %s from %s" % (
-                                my_class.__name__, py_mod.__name__))
+                            ExecutionBlock.list_of_model_dependencies.append("from %s import %s" % (
+                                py_mod.__name__, my_class.__name__))
 
     def generateCodeName(self, base_name='model_'):
         ExecutionBlock.generateCodeName(self, base_name)
@@ -1015,7 +1015,7 @@ class TimeLoopBlock(SequentialBlock):
     def generateInitCode(self, indent=0):
         return []
 
-    def generateExecutionCode(self, indent=0, time=''):
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         code = ExecutionBlock.generateExecutionCode(self)
         var_time = "%s_time" % self.code_name
         var_target_time = "%s_target_time" % self.code_name
@@ -1024,15 +1024,18 @@ class TimeLoopBlock(SequentialBlock):
         var_time_step = "%s_time_step" % self.code_name
         var_time_step_number = "%s_time_step_number" % self.code_name
 
-        code.append("%s = time = PQ.PhysicalQuantity(%s, timeUnits)" % (var_time, self.getStartTime()))
-        code.append("%s = PQ.PhysicalQuantity(%s, timeUnits)" % (var_target_time, self.getTargetTime()))
+        code.append("timeUnits = mupif.Physics.PhysicalQuantities.PhysicalUnit('s',   1.,    [0, 0, 1, 0, 0, 0, 0, 0, 0])")
+        code.append("%s = time = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
+            var_time, self.getStartTime()))
+        code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
+            var_target_time, self.getTargetTime()))
         code.append("%s = True" % var_compute)
         code.append("%s = 0" % var_time_step_number)
 
         code.append("while %s:" % var_compute)
         while_code = []
 
-        code.append("%s += 1" % var_time_step_number)
+        code.append("\t%s += 1" % var_time_step_number)
 
         dt_code = "\t%s = min(" % var_dt
         first = True
@@ -1043,22 +1046,22 @@ class TimeLoopBlock(SequentialBlock):
             first = False
         dt_code += ")"
 
+        while_code.append("")
+        while_code.append(dt_code)
+        while_code.append("\t%s = min(%s+%s, %s)" % (var_time, var_time, var_dt, var_target_time))
+        while_code.append("")
+
         while_code.append("\tif %s.inUnitsOf(timeUnits).getValue() + 1.e-6 > %s.inUnitsOf(timeUnits).getValue():" % (
             var_time, var_target_time))
         while_code.append("\t\t%s = False" % var_compute)
 
         while_code.append("\t")
-        while_code.append("\t%s = TimeStep.TimeStep(self.%s, self.%s, self.%s, n=%s)" % (
+        while_code.append("\t%s = mupif.TimeStep.TimeStep(%s, %s, %s, n=%s)" % (
             var_time_step, var_time, var_dt, var_target_time, var_time_step_number))
         # while_code.append("\t")
 
         for block in self.getChildExecutionBlocks():
-            while_code.extend(block.generateExecutionCode(1, "%s.getTime()" % var_time_step))
-
-        while_code.append("")
-        while_code.append(dt_code)
-
-        while_code.append("\t%s = min(%s+%s, %s)" % (var_time, var_time, var_dt, var_target_time))
+            while_code.extend(block.generateExecutionCode(1, "%s.getTime()" % var_time_step, var_time_step))
 
         code.extend(while_code)
         code.append("")
@@ -1084,8 +1087,10 @@ class CustomPythonCodeBlock(ExecutionBlock):
     def generateInitCode(self, indent=0):
         return []
 
-    def generateExecutionCode(self, indent=0, time=''):
-        return self.code_lines
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
+        code = ExecutionBlock.generateExecutionCode(self)
+        code.extend(self.code_lines)
+        return push_indents_before_each_line(code, indent)
 
     def setCodeLines(self, lines):
         self.code_lines = lines
