@@ -126,7 +126,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         code = ["", "# initialization code of %s (%s)" % (self.code_name, self.name)]
         return push_indents_before_each_line(code, indent)
 
-    def generateExecutionCode(self, indent=0):
+    def generateExecutionCode(self, indent=0, time=''):
         """returns tuple containing strings with code lines"""
         code = ["", "# execution code of %s (%s)" % (self.code_name, self.name)]
         return push_indents_before_each_line(code, indent)
@@ -149,9 +149,9 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
                 code.append("%s.set(name=%s, value=%s)" % (self.name, iSlot.name, source))
         return code
 
-    def generateOutputDataSlotGetFunction(self, slot):
+    def generateOutputDataSlotGetFunction(self, slot, time=''):
         if slot in self.getDataSlots(OutputDataSlot):
-            return "self.%s.get(name='%s')" % (self.code_name, slot.name)
+            return "self.%s.get(%s, %s)" % (self.code_name, slot.name, time)
         return ""
 
     def getChildItems(self):
@@ -562,8 +562,8 @@ class SequentialBlock (ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
 
-    def generateExecutionCode(self, indent=0):
-        code = ExecutionBlock.generateExecutionCode()
+    def generateExecutionCode(self, indent=0, time=''):
+        code = ExecutionBlock.generateExecutionCode(self)
 
         for block in self.getChildExecutionBlocks():
             code.extend(block.generateExecutionCode())
@@ -797,6 +797,14 @@ class WorkflowBlock(SequentialBlock):
 
         code.append("\t")
 
+        # terminate
+
+        code.append("\tdef terminate(self):")
+        for model in all_model_blocks:
+            if(isinstance(model, ModelBlock)):
+                code.append("\t\tself.%s.terminate()" % model.code_name)
+        code.append("\t")
+
         # solve or solveStep
 
         if class_code:
@@ -883,7 +891,7 @@ class VariableBlock(ExecutionBlock):
     def generateCodeName(self, base_name='variable_'):
         ExecutionBlock.generateCodeName(self, base_name)
 
-    def generateExecutionCode(self, indent=0):
+    def generateExecutionCode(self, indent=0, time=''):
         return []
 
     def generateInitCode(self, indent=0):
@@ -891,7 +899,7 @@ class VariableBlock(ExecutionBlock):
         code.append("self.%s = %le" % (self.code_name, self.value))
         return push_indents_before_each_line(code, indent)
 
-    def generateOutputDataSlotGetFunction(self, slot):
+    def generateOutputDataSlotGetFunction(self, slot, time=''):
         return "self.%s" % self.code_name
 
 
@@ -900,6 +908,10 @@ class ModelBlock(ExecutionBlock):
         ExecutionBlock.__init__(self, parent, workflow)
         self.model = model
         self.name = model_name
+        self.input_file = ""
+
+    def setInputFile(self, input_file):
+        self.input_file = input_file
 
     def getInputSlots(self):
         return self.model.getInputSlots()
@@ -909,16 +921,19 @@ class ModelBlock(ExecutionBlock):
 
     def generateInitCode(self, indent=0):
         code = ExecutionBlock.generateInitCode(self)
-        code.append("self.%s = %s()" % (self.code_name, self.name))
+        input_file_add = ""
+        if self.input_file != "":
+            input_file_add = "file='%s', workdir='.'" % self.input_file
+        code.append("self.%s = %s(%s)" % (self.code_name, self.name, input_file_add))
         return push_indents_before_each_line(code, indent)
 
-    def generateExecutionCode(self, indent=0):
+    def generateExecutionCode(self, indent=0, time=''):
         code = ExecutionBlock.generateExecutionCode(self)
 
         for slot in self.getDataSlots(InputDataSlot):
             linked_slot = slot.getLinkedDataSlot()
-            code.append("self.%s.set(name='%s', value=%s)" % (
-                self.code_name, slot.name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot)))
+            code.append("self.%s.set(%s)" % (
+                self.code_name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot, time)))
 
         code.append("self.%s.solveStep(tstep)" % self.code_name)
 
@@ -947,12 +962,13 @@ class ModelBlock(ExecutionBlock):
         for mod in dir(py_mod):
             if not mod[0] == "_":
                 my_class = getattr(py_mod, mod)
-                if my_class.__name__ not in ExecutionBlock.getListOfModelClassnames() and inspect.isclass(my_class):
-                    if issubclass(my_class, mupif.Application.Application) or issubclass(my_class,
-                                                                                        mupif.Workflow.Workflow):
-                        ExecutionBlock.list_of_models.append(my_class)
-                        ExecutionBlock.list_of_model_dependencies.append("import %s from %s" % (
-                            my_class.__name__, py_mod.__name__))
+                if hasattr(my_class, '__name__'):
+                    if my_class.__name__ not in ExecutionBlock.getListOfModelClassnames() and inspect.isclass(my_class):
+                        if issubclass(my_class, mupif.Application.Application) or issubclass(my_class,
+                                                                                            mupif.Workflow.Workflow):
+                            ExecutionBlock.list_of_models.append(my_class)
+                            ExecutionBlock.list_of_model_dependencies.append("import %s from %s" % (
+                                my_class.__name__, py_mod.__name__))
 
     def generateCodeName(self, base_name='model_'):
         ExecutionBlock.generateCodeName(self, base_name)
@@ -962,6 +978,20 @@ class ModelBlock(ExecutionBlock):
         if model_id > -1:
             return ExecutionBlock.list_of_model_dependencies[model_id]
         return "# dependency of %s not found" % self.code_name
+
+    def addLocalMenuItems(self, menu):
+        def _set_input_file():
+            temp = QtWidgets.QInputDialog()
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter input file name", "Input file:", QtWidgets.QLineEdit.Normal, self.input_file)
+            if ok_pressed:
+                self.input_file = new_value
+
+        action = menu.addAction("Set input file")
+        action.triggered.connect(_set_input_file)
+
+    def addMenuItems(self, menu):
+        ExecutionBlock.addMenuItems(self, menu)
+        self.addLocalMenuItems(menu)
 
 
 class TimeLoopBlock(SequentialBlock):
@@ -985,20 +1015,24 @@ class TimeLoopBlock(SequentialBlock):
     def generateInitCode(self, indent=0):
         return []
 
-    def generateExecutionCode(self, indent=0):
+    def generateExecutionCode(self, indent=0, time=''):
         code = ExecutionBlock.generateExecutionCode(self)
         var_time = "%s_time" % self.code_name
         var_target_time = "%s_target_time" % self.code_name
         var_dt = "%s_dt" % self.code_name
         var_compute = "%s_compute" % self.code_name
+        var_time_step = "%s_time_step" % self.code_name
+        var_time_step_number = "%s_time_step_number" % self.code_name
 
-        code.append("%s = %s" % (var_time, self.getStartTime()))
-        code.append("%s = %s" % (var_target_time, self.getTargetTime()))
+        code.append("%s = time = PQ.PhysicalQuantity(%s, timeUnits)" % (var_time, self.getStartTime()))
+        code.append("%s = PQ.PhysicalQuantity(%s, timeUnits)" % (var_target_time, self.getTargetTime()))
         code.append("%s = True" % var_compute)
+        code.append("%s = 0" % var_time_step_number)
 
-        # code.append("while %s < %s:" % (var_time, var_target_time))
         code.append("while %s:" % var_compute)
         while_code = []
+
+        code.append("%s += 1" % var_time_step_number)
 
         dt_code = "\t%s = min(" % var_dt
         first = True
@@ -1009,11 +1043,17 @@ class TimeLoopBlock(SequentialBlock):
             first = False
         dt_code += ")"
 
-        while_code.append("\tif %s + 1.e-6 > %s:" % (var_time, var_target_time))
+        while_code.append("\tif %s.inUnitsOf(timeUnits).getValue() + 1.e-6 > %s.inUnitsOf(timeUnits).getValue():" % (
+            var_time, var_target_time))
         while_code.append("\t\t%s = False" % var_compute)
 
+        while_code.append("\t")
+        while_code.append("\t%s = TimeStep.TimeStep(self.%s, self.%s, self.%s, n=%s)" % (
+            var_time_step, var_time, var_dt, var_target_time, var_time_step_number))
+        # while_code.append("\t")
+
         for block in self.getChildExecutionBlocks():
-            while_code.extend(block.generateExecutionCode(1))
+            while_code.extend(block.generateExecutionCode(1, "%s.getTime()" % var_time_step))
 
         while_code.append("")
         while_code.append(dt_code)
@@ -1044,7 +1084,7 @@ class CustomPythonCodeBlock(ExecutionBlock):
     def generateInitCode(self, indent=0):
         return []
 
-    def generateExecutionCode(self, indent=0):
+    def generateExecutionCode(self, indent=0, time=''):
         return self.code_lines
 
     def setCodeLines(self, lines):
