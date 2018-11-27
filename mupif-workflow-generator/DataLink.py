@@ -106,13 +106,15 @@ class DataSlot(QtWidgets.QGraphicsItem):
     """
     Class describing input/output parameter of block
     """
-    def __init__(self, owner, name, type, optional=False, parent=None, **kwargs):
+    def __init__(self, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0, **kwargs):
         QtWidgets.QGraphicsItem.__init__(self, parent)
         self.name = name
         self.owner = owner
         self.type = type
         self.optional = optional
         self.external = False
+        self.obj_type = obj_type
+        self.obj_id = obj_id
 
         if isinstance(self, OutputDataSlot):
             self.optional = True
@@ -464,8 +466,8 @@ class InputDataSlot (DataSlot):
     """
     Class describing input/output parameter of block
     """
-    def __init__(self, owner, name, type, optional=False):
-        DataSlot.__init__(self, owner, name, type, optional)
+    def __init__(self, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0):
+        DataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
 
     def __repr__(self):
         return "InputDataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
@@ -475,21 +477,21 @@ class OutputDataSlot (DataSlot):
     """
     Class describing input/output parameter of block
     """
-    def __init__ (self, owner, name, type, optional=False):
-        DataSlot.__init__(self, owner, name, type, optional)
+    def __init__(self, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0):
+        DataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
 
     def __repr__(self):
         return "OutputDataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
 
 
 class ExternalInputDataSlot(InputDataSlot):
-    def __init__(self, owner, name, type, optional=True):
-        InputDataSlot.__init__(self, owner, name, type, optional)
+    def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
+        InputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
 
 
 class ExternalOutputDataSlot(OutputDataSlot):
-    def __init__(self, owner, name, type, optional=True):
-        OutputDataSlot.__init__(self, owner, name, type, optional)
+    def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
+        OutputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
 
 
 class DataLink(QtWidgets.QGraphicsPathItem):

@@ -151,7 +151,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def generateOutputDataSlotGetFunction(self, slot, time=''):
         if slot in self.getDataSlots(OutputDataSlot):
-            return "self.%s.get(%s, %s)" % (self.code_name, slot.name, time)
+            return "self.%s.get(%s, %s, %d)" % (self.code_name, slot.obj_type, time, slot.obj_id)
         return ""
 
     def getChildItems(self):
@@ -899,8 +899,13 @@ class VariableBlock(ExecutionBlock):
         code.append("self.%s = %le" % (self.code_name, self.value))
         return push_indents_before_each_line(code, indent)
 
-    def generateOutputDataSlotGetFunction(self, slot, time=''):
-        return "self.%s" % self.code_name
+    def generateOutputDataSlotGetFunction(self, slot, time='', get_variable=False):
+        if get_variable:
+            return "self.%s" % self.code_name
+        return self.generatePropertyCode()
+
+    def generatePropertyCode(self):
+        return "mupif.Property.ConstantProperty((self.%s,), 0, mupif.ValueType.Scalar, mupif.Physics.PhysicalQuantities.PhysicalUnit('', 1., [0, 0, 0, 0, 0, 0, 0, 0, 0]))" % self.code_name
 
 
 class ModelBlock(ExecutionBlock):
@@ -932,8 +937,10 @@ class ModelBlock(ExecutionBlock):
 
         for slot in self.getDataSlots(InputDataSlot):
             linked_slot = slot.getLinkedDataSlot()
-            code.append("self.%s.set(%s)" % (
-                self.code_name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot, time)))
+            if linked_slot:
+                code.append("self.%s.set(%s, %d)" % (
+                    self.code_name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot, time),
+                    slot.obj_id))
 
         code.append("self.%s.solveStep(%s)" % (self.code_name, timestep))
 
@@ -948,9 +955,19 @@ class ModelBlock(ExecutionBlock):
         if model.hasMetadata('name') and model.hasMetadata('inputs') and model.hasMetadata('outputs'):
             self.name = self.model = model.getMetadata('name')
             for slot in model.getMetadata('inputs'):
-                self.addDataSlot(InputDataSlot(self, slot['name'], DataSlotType.getTypeFromName(slot['type']), slot['optional']))
+                obj_id = 0
+                if 'obj_id' in slot:
+                    obj_id = slot['obj_id']
+                self.addDataSlot(
+                    InputDataSlot(self, slot['name'], DataSlotType.getTypeFromName(slot['type']), slot['optional'],
+                                  None, slot['obj_type'], obj_id))
             for slot in model.getMetadata('outputs'):
-                self.addDataSlot(OutputDataSlot(self, slot['name'], DataSlotType.getTypeFromName(slot['type']), slot['optional']))
+                obj_id = 0
+                if 'obj_id' in slot:
+                    obj_id = slot['obj_id']
+                self.addDataSlot(
+                    OutputDataSlot(self, slot['name'], DataSlotType.getTypeFromName(slot['type']), slot['optional'],
+                                   None, slot['obj_type'], obj_id))
             self.updateHeaderText()
 
     @staticmethod
@@ -1003,13 +1020,13 @@ class TimeLoopBlock(SequentialBlock):
     def getStartTime(self):
         connected_slot = self.getDataSlotWithName("start_time").getLinkedDataSlot()
         if connected_slot:
-            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
+            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot, get_variable=True)
         return "0."  # TODO call ERROR
 
     def getTargetTime(self):
         connected_slot = self.getDataSlotWithName("target_time").getLinkedDataSlot()
         if connected_slot:
-            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
+            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot, get_variable=True)
         return "0."  # TODO call ERROR
 
     def generateInitCode(self, indent=0):
@@ -1025,7 +1042,7 @@ class TimeLoopBlock(SequentialBlock):
         var_time_step_number = "%s_time_step_number" % self.code_name
 
         code.append("timeUnits = mupif.Physics.PhysicalQuantities.PhysicalUnit('s',   1.,    [0, 0, 1, 0, 0, 0, 0, 0, 0])")
-        code.append("%s = time = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
+        code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
             var_time, self.getStartTime()))
         code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
             var_target_time, self.getTargetTime()))
