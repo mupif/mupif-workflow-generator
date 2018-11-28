@@ -1,6 +1,6 @@
 #
 #           MuPIF: Multi-Physics Integration Framework
-#               Copyright (C) 2010-2015 Borek Patzak
+#               Copyright (C) 2010-2018 Borek Patzak
 #
 #    Czech Technical University, Faculty of Civil Engineering,
 #  Department of Structural Mechanics, 166 29 Prague, Czech Republic
@@ -26,6 +26,7 @@ import inspect
 import importlib.util
 from DataLink import *
 from Button import *
+from Label import *
 import uuid
 import Header
 import json
@@ -107,6 +108,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         self.button_menu = Button(self, "...")
         self.button_menu.setParentItem(self)
+
+        self.label = Label(self)
 
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
@@ -293,8 +296,13 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         header_width += (2*self.spacing + helpers.getTextSize(self.button_menu.text).width())
 
-        width_child_max = max(header_width, max_slot_width)
+        width_child_max = max(header_width, max_slot_width, self.label.getWidth())
         height_children = self.header.h + self.spacing
+
+        self.label.x = self.spacing
+        self.label.y = height_children
+        if self.label.shouldBePainted():
+            height_children += self.label.getHeight() + self.spacing
 
         # update data slots
         for elem in self.getDataSlots():
@@ -1100,6 +1108,7 @@ class CustomPythonCodeBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
         self.code_lines = ["# CustomPythonBlock code"]
+        self.updateLabel()
 
     def generateInitCode(self, indent=0):
         return []
@@ -1111,9 +1120,17 @@ class CustomPythonCodeBlock(ExecutionBlock):
 
     def setCodeLines(self, lines):
         self.code_lines = lines
+        self.updateLabel()
 
     def paint(self, painter, option, widget):
         ExecutionBlock.paint(self, painter, option, widget)
+
+    def updateLabel(self):
+        lenght = len(self.code_lines)
+        if lenght > 1:
+            self.label.text = "%d lines of code" % lenght
+        else:
+            self.label.text = "%d line of code" % lenght
 
     def addEditCodeItems(self, menu):
         sub_menu = menu.addMenu("Code")
@@ -1138,6 +1155,7 @@ class CustomPythonCodeBlock(ExecutionBlock):
 
             def _saveCode():
                 self.code_lines = self.code_editor.toPlainText().split("\n")
+                self.updateLabel()
                 print("Code has been saved.")
 
             self.code_editor.textChanged.connect(_saveCode)
@@ -1157,6 +1175,7 @@ class CustomPythonCodeBlock(ExecutionBlock):
                 code = f.read()
                 f.close()
                 self.code_lines = code.split("\n")
+                self.updateLabel()
 
         load_code = sub_menu.addAction("Load from file")
         load_code.triggered.connect(_loadCode)
