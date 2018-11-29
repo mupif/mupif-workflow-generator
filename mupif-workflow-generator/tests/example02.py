@@ -8,11 +8,11 @@ if __name__ == '__main__':
     application = Application()
     workflow = application.getWorkflowBlock()
 
-    var1 = VariableBlock(workflow, workflow)
+    var1 = FloatVariableBlock(workflow, workflow)
     var1.setValue(0.5)
     workflow.addExecutionBlock(var1)
 
-    var2 = VariableBlock(workflow, workflow)
+    var2 = FloatVariableBlock(workflow, workflow)
     var2.setValue(10.0)
     workflow.addExecutionBlock(var2)
 

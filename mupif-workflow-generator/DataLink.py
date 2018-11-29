@@ -53,8 +53,17 @@ DELETE_MODIFIER_KEY = QtCore.Qt.AltModifier if windows else QtCore.Qt.ControlMod
 
 
 class DataSlotType(Enum):
-    Scalar = 1
+    Unknown = 0
+
+    Property = 1
     Field = 2
+    Function = 3
+
+    Int = 11
+    Double = 12
+    String = 13
+
+    Scalar = 111
 
     @staticmethod
     def getTypeFromName(val):

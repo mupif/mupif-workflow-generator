@@ -19,7 +19,7 @@ class Window(QtWidgets.QMainWindow):
     def __init__(self, parent):
         super(Window, self).__init__()
         self.application = parent
-        self.setGeometry(50, 50, 800, 800)
+        self.setGeometry(50, 50, 800, 1000)
         self.setMinimumWidth(500)
         self.setMinimumHeight(500)
         self.setWindowTitle("MuPIF Workflow Generator")
@@ -118,6 +118,21 @@ class Window(QtWidgets.QMainWindow):
                                             "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
                                             "DataSlots are connected.")
 
+        def _show_class_code():
+            if self.widget.workflow.checkConsistency(execution=False):
+                code = self.widget.workflow.getClassCode()
+                self.code_editor = QtWidgets.QTextEdit()
+                for line in code:
+                    self.code_editor.append(line)
+                self.code_editor.resize(300, 300)
+                self.code_editor.setReadOnly(True)
+                self.code_editor.show()
+            else:
+                print("Workflow.checkConsistency() returned False")
+                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
+                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
+                                            "DataSlots are connected.")
+
         def _generate_execution_code():
             if self.widget.workflow.checkConsistency(execution=True):
                 code = self.widget.workflow.getExecutionCode()
@@ -141,6 +156,37 @@ class Window(QtWidgets.QMainWindow):
                                             "DataSlots are connected.\nExecution Workflow also cannot contain external "
                                             "DataSlots.")
 
+        def _show_execution_code():
+            if self.widget.workflow.checkConsistency(execution=True):
+                code = self.widget.workflow.getExecutionCode()
+                self.code_editor = QtWidgets.QTextEdit()
+                for line in code:
+                    self.code_editor.append(line)
+                self.code_editor.resize(300, 300)
+                self.code_editor.setReadOnly(True)
+                self.code_editor.show()
+            else:
+                print("Workflow.checkConsistency() returned False")
+                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
+                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
+                                            "DataSlots are connected.\nExecution Workflow also cannot contain external "
+                                            "DataSlots.")
+
+        def _run_execution_code():
+            if self.widget.workflow.checkConsistency(execution=True):
+                code = self.widget.workflow.getExecutionCode()
+                temp_file = 'sldfjlksdajlvkasd.py'
+                f = open(temp_file, "w")
+                f.write(formatCodeToText(code))
+                f.close()
+                os.system("python3 %s" % temp_file)
+            else:
+                print("Workflow.checkConsistency() returned False")
+                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
+                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
+                                            "DataSlots are connected.\nExecution Workflow also cannot contain external "
+                                            "DataSlots.")
+
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
         #
@@ -148,11 +194,20 @@ class Window(QtWidgets.QMainWindow):
         workflow_action_new_blank_workflow.triggered.connect(_new_blank_workflow)
         workflow_action_new_blank_workflow.setShortcut("Ctrl+N")
 
-        workflow_action_generate_class_code = QtWidgets.QAction('Generate class code', self)
-        workflow_action_generate_class_code.triggered.connect(_generate_class_code)
+        workflow_action_show_class_code = QtWidgets.QAction('Show class code', self)
+        workflow_action_show_class_code.triggered.connect(_show_class_code)
 
-        workflow_action_generate_execution_code = QtWidgets.QAction('Generate execution code', self)
-        workflow_action_generate_execution_code.triggered.connect(_generate_execution_code)
+        workflow_action_save_class_code = QtWidgets.QAction('Save class code', self)
+        workflow_action_save_class_code.triggered.connect(_generate_class_code)
+
+        workflow_action_save_execution_code = QtWidgets.QAction('Save execution code', self)
+        workflow_action_save_execution_code.triggered.connect(_generate_execution_code)
+
+        workflow_action_show_execution_code = QtWidgets.QAction('Show execution code', self)
+        workflow_action_show_execution_code.triggered.connect(_show_execution_code)
+
+        workflow_action_run_execution_code = QtWidgets.QAction('Run execution code', self)
+        workflow_action_run_execution_code.triggered.connect(_run_execution_code)
 
         workflow_action_save_to_file = QtWidgets.QAction('Save to file', self)
         workflow_action_save_to_file.triggered.connect(_save_to_json_file)
@@ -163,8 +218,11 @@ class Window(QtWidgets.QMainWindow):
         workflow_action_load_from_file.setShortcut("Ctrl+L")
         #
         workflow_menu.addAction(workflow_action_new_blank_workflow)
-        workflow_menu.addAction(workflow_action_generate_class_code)
-        workflow_menu.addAction(workflow_action_generate_execution_code)
+        workflow_menu.addAction(workflow_action_show_class_code)
+        workflow_menu.addAction(workflow_action_save_class_code)
+        workflow_menu.addAction(workflow_action_show_execution_code)
+        workflow_menu.addAction(workflow_action_save_execution_code)
+        workflow_menu.addAction(workflow_action_run_execution_code)
         workflow_menu.addAction(workflow_action_save_to_file)
         workflow_menu.addAction(workflow_action_load_from_file)
         #

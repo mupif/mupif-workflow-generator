@@ -8,9 +8,12 @@ class Label(QtWidgets.QGraphicsItem):
     """"""
     def __init__(self, owner, text='', parent=None, **kwargs):
         QtWidgets.QGraphicsItem.__init__(self, parent)
-        self.text = text
+        self.text = ""
+        self.lines = []
         self.owner = owner
         self.setParentItem(self.owner)
+
+        self.line_h = 14
 
         # Qt
         self.x = 0
@@ -22,11 +25,13 @@ class Label(QtWidgets.QGraphicsItem):
 
         self.text_color = QtGui.QColor(10, 10, 10)
 
+        self.setText(text)
+
     def __repr__(self):
         return "Label (%s.label: '%s')" % (self.owner.name, self.text)
 
     def getWidth(self):
-        return self.w
+        return self.w*len(self.lines)
 
     def getHeight(self):
         return self.h
@@ -37,10 +42,26 @@ class Label(QtWidgets.QGraphicsItem):
             text_size = helpers.getTextSize(self.text, painter=painter)
             self.w = text_size.width()
             painter.setPen(QtGui.QPen(self.text_color))
-            painter.drawText(int(self.x), int(self.y+self.h), self.text)
+            y = int(self.y+self.line_h)
+            self.lines = self.text.split('\n')
+            for line in self.lines:
+                painter.drawText(int(self.x), y, line)
+                y += int(self.line_h)
 
     def shouldBePainted(self):
         if self.text == '':
             return False
         return True
+
+    def boundingRect(self):
+        rect = QtCore.QRectF(self.x,
+                             self.y,
+                             self.w,
+                             self.h)
+        return rect
+
+    def setText(self, val):
+        self.text = val
+        self.lines = self.text.split('\n')
+        self.h = self.line_h*len(self.lines)
 

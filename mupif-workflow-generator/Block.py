@@ -113,6 +113,9 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
+    def updateLabel(self):
+        """"""
+
     @staticmethod
     def getIDOfModelInList(model):
         if model in ExecutionBlock.list_of_models:
@@ -330,11 +333,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def updateChildrenSizeAndPositionAndResizeSelf(self, color_id=0):
         if color_id:
-            self.fillColor = QtGui.QColor(220, 220, 220)
             child_color_id = 0
-
         else:
-            self.fillColor = QtGui.QColor(180, 180, 180)
             child_color_id = 1
 
         # call it for child blocks
@@ -350,7 +350,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
     def paint(self, painter, option, widget):
         """Draw the Node's container rectangle."""
         painter.setBrush(QtGui.QBrush(self.fillColor))
-        # painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
         painter.setPen(QtGui.QPen(QtGui.QColor(20, 20, 20)))
         painter.drawRoundedRect(self.x,
                                 self.y,
@@ -616,7 +615,8 @@ class WorkflowBlock(SequentialBlock):
         self.widget = parent
 
         ExecutionBlock.list_of_block_classes = []
-        ExecutionBlock.list_of_block_classes.extend([TimeLoopBlock, VariableBlock, CustomPythonCodeBlock, IfElseBlock])
+        ExecutionBlock.list_of_block_classes.extend([TimeLoopBlock, FloatVariableBlock, CustomPythonCodeBlock, IfElseBlock])
+        ExecutionBlock.list_of_block_classes.extend([ConstantPropertyBlock])
 
     def getScene(self):
         return self.loc_scene
@@ -858,34 +858,53 @@ class WorkflowBlock(SequentialBlock):
 class VariableBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
-        self.value = 0.
-        self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Scalar, False))
-        self.getDataSlots()[0].displayName = "%le" % self.value
-        self.variable_name = ""
+        self.value = None
+        self.fillColor = QtGui.QColor(51, 204, 255)
 
-    def addVariableBlockMenuItems(self, menu):
-        sub_menu = menu.addMenu("Modify")
+    def paint(self, painter, option, widget):
+        ExecutionBlock.paint(self, painter, option, widget)
 
-        def _changeValue():
+    def generateCodeName(self, base_name='variable_'):
+        ExecutionBlock.generateCodeName(self, base_name)
+
+    def setValueFromTextInput(self, val):
+        """"""
+
+    def addSpecificMenuItems(self, menu):
+        def _setValue():
             temp = QtWidgets.QInputDialog()
-            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter new value", "New value")
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Set value", "")
             if ok_pressed:
-                self.value = float(new_value)
-                self.getDataSlots()[0].displayName = "%le" % self.value
+                self.setValueFromTextInput(new_value)
+                self.updateLabel()
 
-        change_value_action = sub_menu.addAction("Change value")
-        change_value_action.triggered.connect(_changeValue)
+        action = menu.addAction("Set value")
+        action.triggered.connect(_setValue)
+
+
+class FloatVariableBlock(VariableBlock):
+    def __init__(self, parent, workflow):
+        VariableBlock.__init__(self, parent, workflow)
+        self.value = 0.
+        self.updateLabel()
+        self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Scalar, False))
+
+    def updateLabel(self):
+        self.label.setText("%.3le" % self.value)
+
+    def setValueFromTextInput(self, val):
+        self.value = float(val)
 
     def addMenuItems(self, menu):
         ExecutionBlock.addMenuItems(self, menu)
-        self.addVariableBlockMenuItems(menu)
+        self.addSpecificMenuItems(menu)
 
     def getValue(self):
         return self.value
 
     def setValue(self, val):
         self.value = val
-        self.getDataSlots()[0].displayName = "%le" % self.value
+        self.updateLabel()
 
     def getDictForJSON(self):
         answer = ExecutionBlock.getDictForJSON(self)
@@ -896,7 +915,7 @@ class VariableBlock(ExecutionBlock):
         ExecutionBlock.initializeFromJSONData(self, json_data)
         self.setValue(json_data['value'])
 
-    def generateCodeName(self, base_name='variable_'):
+    def generateCodeName(self, base_name='float_variable_'):
         ExecutionBlock.generateCodeName(self, base_name)
 
     def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
@@ -907,13 +926,145 @@ class VariableBlock(ExecutionBlock):
         code.append("self.%s = %le" % (self.code_name, self.value))
         return push_indents_before_each_line(code, indent)
 
+    def getCodeRepresentation(self):
+        return "self.%s" % self.code_name
+
     def generateOutputDataSlotGetFunction(self, slot, time='', get_variable=False):
         if get_variable:
-            return "self.%s" % self.code_name
+            return self.getCodeRepresentation()
         return self.generatePropertyCode()
 
     def generatePropertyCode(self):
-        return "mupif.Property.ConstantProperty((self.%s,), 0, mupif.ValueType.Scalar, mupif.Physics.PhysicalQuantities.PhysicalUnit('', 1., [0, 0, 0, 0, 0, 0, 0, 0, 0]))" % self.code_name
+        value = "(%s,)" % self.getCodeRepresentation()
+        propID = "0"
+        valueType = "mupif.ValueType.ValueType.Scalar"
+        units = "mupif.Physics.PhysicalQuantities.PhysicalUnit('', 1., [0, 0, 0, 0, 0, 0, 0, 0, 0])"
+        objectID = "0"
+        return "mupif.Property.ConstantProperty(%s, %s, %s, %s, None, %s)" % (
+            value, propID, valueType, units, objectID)
+
+
+class ConstantPropertyBlock(VariableBlock):
+    def __init__(self, parent, workflow):
+        VariableBlock.__init__(self, parent, workflow)
+        self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Scalar, False))
+        self.value = ()
+        self.propID = 0
+        self.valueType = None
+        self.units = None
+        self.objectID = 0
+        self.updateLabel()
+
+    def updateLabel(self):
+        self.label.setText("value=%s\npropID=%s\nvalueType=%s\nunits=%s\nobjectID=%s" % (
+            self.value, self.propID, self.valueType, self.units, self.objectID))
+
+    def getDictForJSON(self):
+        answer = ExecutionBlock.getDictForJSON(self)
+        answer.update({'value': self.value})
+        answer.update({'propID': self.propID})
+        answer.update({'valueType': self.valueType})
+        answer.update({'units': self.units})
+        answer.update({'objectID': self.objectID})
+        return answer
+
+    def initializeFromJSONData(self, json_data):
+        ExecutionBlock.initializeFromJSONData(self, json_data)
+        self.value = json_data['value']
+        self.propID = json_data['propID']
+        self.valueType = json_data['valueType']
+        self.units = json_data['units']
+        self.objectID = json_data['objectID']
+
+    def generateCodeName(self, base_name='constant_property_'):
+        ExecutionBlock.generateCodeName(self, base_name)
+
+    def generateInitCode(self, indent=0):
+        code = ExecutionBlock.generateInitCode(self)
+        code.append("self.%s = mupif.Property.ConstantProperty(%s, mupif.PropertyID.%s, %s, %s, None, %s)" % (
+            self.code_name, self.value, self.propID, self.valueType, self.units, self.objectID))
+        return push_indents_before_each_line(code, indent)
+
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
+        return []
+
+    def getCodeRepresentation(self):
+        return "self.%s" % self.code_name
+
+    def addSpecificMenuItems(self, menu):
+        sub_menu = menu.addMenu("Modify")
+
+        def _setValue():
+            temp = QtWidgets.QInputDialog()
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter new value", "New value")
+            if ok_pressed:
+                t = ()
+                for e in new_value.split(' '):
+                    t = t + (float(e),)
+                self.value = t
+                self.updateLabel()
+
+        action = sub_menu.addAction("Set value")
+        action.triggered.connect(_setValue)
+
+        def _setPropertyID():
+            items = ['']
+            items.extend(list(map(str, mupif.propertyID.PropertyID)))
+            items_real = ['']
+            items_real.extend(list(mupif.propertyID.PropertyID))
+
+            selected_id = 0
+            if str(self.propID) in items:
+                selected_id = items.index(str(self.propID))
+
+            temp = QtWidgets.QInputDialog()
+            item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose new PropertyID", "", items, selected_id, False)
+            if ok and item:
+                if item in items:
+                    selected_id = items.index(item)
+                    self.propID = items_real[selected_id]
+                    self.updateLabel()
+
+        def _setValueType():
+            if self.getDataSlotWithName('value').connected():
+                QtWidgets.QMessageBox.about(self.workflow.widget, "Action denied",
+                                            "Cannot change ValueType while the DataSlot is connected.")
+            else:
+                items = ['']
+                items.extend(list(map(str, mupif.ValueType.ValueType)))
+                items_real = ['']
+                items_real.extend(list(mupif.ValueType.ValueType))
+
+                selected_id = 0
+                if str(self.valueType) in items:
+                    selected_id = items.index(str(self.valueType))
+
+                temp = QtWidgets.QInputDialog()
+                item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose new ValueType", "", items, selected_id, False)
+                if ok and item:
+                    if item in items:
+                        selected_id = items.index(item)
+                        self.valueType = items_real[selected_id]
+                        self.updateLabel()
+
+        def _setObjectID():
+            temp = QtWidgets.QInputDialog()
+            new_value, ok_pressed = QtWidgets.QInputDialog.getInt(temp, "Set objectID", "", value=self.objectID, min=0)
+            if ok_pressed:
+                self.objectID = new_value
+                self.updateLabel()
+                self.updateLabel()
+
+        action = sub_menu.addAction("Set PropertyID")
+        action.triggered.connect(_setPropertyID)
+        action = sub_menu.addAction("Set ValueType")
+        action.triggered.connect(_setValueType)
+        action = sub_menu.addAction("Set objectID")
+        action.triggered.connect(_setObjectID)
+
+    def addMenuItems(self, menu):
+        ExecutionBlock.addMenuItems(self, menu)
+        self.addSpecificMenuItems(menu)
 
 
 class ModelBlock(ExecutionBlock):
@@ -922,6 +1073,10 @@ class ModelBlock(ExecutionBlock):
         self.model = model
         self.name = model_name
         self.input_file = ""
+        self.fillColor = QtGui.QColor(255, 77, 77)
+
+    def paint(self, painter, option, widget):
+        ExecutionBlock.paint(self, painter, option, widget)
 
     def setInputFile(self, input_file):
         self.input_file = input_file
@@ -1128,9 +1283,9 @@ class CustomPythonCodeBlock(ExecutionBlock):
     def updateLabel(self):
         lenght = len(self.code_lines)
         if lenght > 1:
-            self.label.text = "%d lines of code" % lenght
+            self.label.setText("%d lines of code" % lenght)
         else:
-            self.label.text = "%d line of code" % lenght
+            self.label.setText("%d line of code" % lenght)
 
     def addEditCodeItems(self, menu):
         sub_menu = menu.addMenu("Code")
