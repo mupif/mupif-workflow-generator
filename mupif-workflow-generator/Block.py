@@ -94,6 +94,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.roundness = 0
         self.fillColor = QtGui.QColor(220, 220, 220)
 
+        self.label = Label(self)
+
         self.header = Header.Header(self, self.__class__.__name__)
         self.header.setParentItem(self)
 
@@ -108,8 +110,6 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         self.button_menu = Button(self, "...")
         self.button_menu.setParentItem(self)
-
-        self.label = Label(self)
 
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
 
@@ -288,7 +288,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def updateChildrenPosition(self):
 
-        slot_widths = [k.w + self.spacing * 3 + helpers.getTextSize(k.displayName).width() for k in self.getDataSlots()]
+        slot_widths = [self.spacing * 2 + k.getNeededWidth() for k in self.getDataSlots()]
         slot_widths.append(0)
         max_slot_width = max(slot_widths)
 
@@ -299,7 +299,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
         header_width += (2*self.spacing + helpers.getTextSize(self.button_menu.text).width())
 
-        width_child_max = max(header_width, max_slot_width, self.label.getWidth())
+        width_child_max = max(header_width, max_slot_width, self.label.getNeededWidth())
+
         height_children = self.header.h + self.spacing
 
         self.label.x = self.spacing
@@ -881,6 +882,12 @@ class VariableBlock(ExecutionBlock):
         action = menu.addAction("Set value")
         action.triggered.connect(_setValue)
 
+    def getCodeRepresentation(self):
+        return "self.%s" % self.code_name
+
+    def generateOutputDataSlotGetFunction(self, slot, time=''):
+        return self.getCodeRepresentation()
+
 
 class FloatVariableBlock(VariableBlock):
     def __init__(self, parent, workflow):
@@ -890,7 +897,7 @@ class FloatVariableBlock(VariableBlock):
         self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Scalar, False))
 
     def updateLabel(self):
-        self.label.setText("%.3le" % self.value)
+        self.label.setText("value = %.3le" % self.value)
 
     def setValueFromTextInput(self, val):
         self.value = float(val)
@@ -926,9 +933,6 @@ class FloatVariableBlock(VariableBlock):
         code.append("self.%s = %le" % (self.code_name, self.value))
         return push_indents_before_each_line(code, indent)
 
-    def getCodeRepresentation(self):
-        return "self.%s" % self.code_name
-
     def generateOutputDataSlotGetFunction(self, slot, time='', get_variable=False):
         if get_variable:
             return self.getCodeRepresentation()
@@ -947,7 +951,7 @@ class FloatVariableBlock(VariableBlock):
 class ConstantPropertyBlock(VariableBlock):
     def __init__(self, parent, workflow):
         VariableBlock.__init__(self, parent, workflow)
-        self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Scalar, False))
+        self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Property, False))
         self.value = ()
         self.propID = 0
         self.valueType = None
@@ -956,7 +960,7 @@ class ConstantPropertyBlock(VariableBlock):
         self.updateLabel()
 
     def updateLabel(self):
-        self.label.setText("value=%s\npropID=%s\nvalueType=%s\nunits=%s\nobjectID=%s" % (
+        self.label.setText("value           = %s\npropID        = %s\nvalueType = %s\nunits           = %s\nobjectID    = %s" % (
             self.value, self.propID, self.valueType, self.units, self.objectID))
 
     def getDictForJSON(self):
@@ -981,15 +985,34 @@ class ConstantPropertyBlock(VariableBlock):
 
     def generateInitCode(self, indent=0):
         code = ExecutionBlock.generateInitCode(self)
-        code.append("self.%s = mupif.Property.ConstantProperty(%s, mupif.PropertyID.%s, %s, %s, None, %s)" % (
-            self.code_name, self.value, self.propID, self.valueType, self.units, self.objectID))
+        code.append("self.%s = mupif.Property.ConstantProperty("
+                    "%s, mupif.propertyID.%s, mupif.ValueType.%s, mupif.Physics.PhysicalQuantities._unit_table['%s'], "
+                    "None, %s)" % (
+                        self.code_name, self.value, self.propID, self.valueType, self.units, self.objectID))
         return push_indents_before_each_line(code, indent)
 
     def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         return []
 
-    def getCodeRepresentation(self):
-        return "self.%s" % self.code_name
+    def setValue(self, val):
+        self.value = val
+        self.updateLabel()
+
+    def setPropertyID(self, val):
+        self.propID = val
+        self.updateLabel()
+
+    def setValueType(self, val):
+        self.valueType = val
+        self.updateLabel()
+
+    def setObjectID(self, val):
+        self.objectID = val
+        self.updateLabel()
+
+    def setUnits(self, val):
+        self.units = val
+        self.updateLabel()
 
     def addSpecificMenuItems(self, menu):
         sub_menu = menu.addMenu("Modify")
@@ -1001,16 +1024,12 @@ class ConstantPropertyBlock(VariableBlock):
                 t = ()
                 for e in new_value.split(' '):
                     t = t + (float(e),)
-                self.value = t
-                self.updateLabel()
-
-        action = sub_menu.addAction("Set value")
-        action.triggered.connect(_setValue)
+                self.setValue(t)
 
         def _setPropertyID():
             items = ['']
             items.extend(list(map(str, mupif.propertyID.PropertyID)))
-            items_real = ['']
+            items_real = [0]
             items_real.extend(list(mupif.propertyID.PropertyID))
 
             selected_id = 0
@@ -1018,49 +1037,166 @@ class ConstantPropertyBlock(VariableBlock):
                 selected_id = items.index(str(self.propID))
 
             temp = QtWidgets.QInputDialog()
-            item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose new PropertyID", "", items, selected_id, False)
+            item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose PropertyID", "", items, selected_id, False)
             if ok and item:
                 if item in items:
                     selected_id = items.index(item)
-                    self.propID = items_real[selected_id]
-                    self.updateLabel()
+                    self.setPropertyID(items_real[selected_id])
 
         def _setValueType():
-            if self.getDataSlotWithName('value').connected():
-                QtWidgets.QMessageBox.about(self.workflow.widget, "Action denied",
-                                            "Cannot change ValueType while the DataSlot is connected.")
-            else:
-                items = ['']
-                items.extend(list(map(str, mupif.ValueType.ValueType)))
-                items_real = ['']
-                items_real.extend(list(mupif.ValueType.ValueType))
+            # if self.getDataSlotWithName('value').connected():
+            #     QtWidgets.QMessageBox.about(self.workflow.widget, "Action denied",
+            #                                 "Cannot change ValueType while the DataSlot is connected.")
+            # else:
+            items = ['']
+            items.extend(list(map(str, mupif.ValueType.ValueType)))
+            items_real = [0]
+            items_real.extend(list(mupif.ValueType.ValueType))
 
-                selected_id = 0
-                if str(self.valueType) in items:
-                    selected_id = items.index(str(self.valueType))
+            selected_id = 0
+            if str(self.valueType) in items:
+                selected_id = items.index(str(self.valueType))
 
-                temp = QtWidgets.QInputDialog()
-                item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose new ValueType", "", items, selected_id, False)
-                if ok and item:
-                    if item in items:
-                        selected_id = items.index(item)
-                        self.valueType = items_real[selected_id]
-                        self.updateLabel()
+            temp = QtWidgets.QInputDialog()
+            item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose ValueType", "", items, selected_id, False)
+            if ok and item:
+                if item in items:
+                    selected_id = items.index(item)
+                    self.valueType = items_real[selected_id]
+                    self.updateLabel()
 
         def _setObjectID():
             temp = QtWidgets.QInputDialog()
             new_value, ok_pressed = QtWidgets.QInputDialog.getInt(temp, "Set objectID", "", value=self.objectID, min=0)
             if ok_pressed:
-                self.objectID = new_value
-                self.updateLabel()
-                self.updateLabel()
+                self.setObjectID(new_value)
 
+        def _setUnits():
+            # if self.getDataSlotWithName('value').connected():
+            #     QtWidgets.QMessageBox.about(self.workflow.widget, "Action denied",
+            #                                 "Cannot change Units while the DataSlot is connected.")
+            # else:
+            items = ['']
+            items.extend(list(map(str, mupif.Physics.PhysicalQuantities._unit_table)))
+            items_real = [0]
+            items_real.extend(list(mupif.Physics.PhysicalQuantities._unit_table))
+
+            selected_id = 0
+            if str(self.units) in items:
+                selected_id = items.index(str(self.units))
+
+            temp = QtWidgets.QInputDialog()
+            item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose Units", "", items, selected_id, False)
+            if ok and item:
+                if item in items:
+                    selected_id = items.index(item)
+                    self.setUnits(items_real[selected_id])
+
+        action = sub_menu.addAction("Set value")
+        action.triggered.connect(_setValue)
         action = sub_menu.addAction("Set PropertyID")
         action.triggered.connect(_setPropertyID)
         action = sub_menu.addAction("Set ValueType")
         action.triggered.connect(_setValueType)
+        action = sub_menu.addAction("Set units")
+        action.triggered.connect(_setUnits)
         action = sub_menu.addAction("Set objectID")
         action.triggered.connect(_setObjectID)
+
+    def addMenuItems(self, menu):
+        ExecutionBlock.addMenuItems(self, menu)
+        self.addSpecificMenuItems(menu)
+
+
+class ConstantPhysicalQuantityBlock(VariableBlock):
+    def __init__(self, parent, workflow):
+        VariableBlock.__init__(self, parent, workflow)
+        self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.PhysicalQuantity, False))
+        self.value = 0.
+        self.units = None
+        self.updateLabel()
+
+    def updateLabel(self):
+        self.label.setText("value = %s\nunits = %s" % (self.value, self.units))
+
+    def getDictForJSON(self):
+        answer = ExecutionBlock.getDictForJSON(self)
+        answer.update({'value': self.value})
+        answer.update({'units': self.units})
+        return answer
+
+    def initializeFromJSONData(self, json_data):
+        ExecutionBlock.initializeFromJSONData(self, json_data)
+        self.value = json_data['value']
+        self.units = json_data['units']
+
+    def generateCodeName(self, base_name='constant_physical_quantity_'):
+        ExecutionBlock.generateCodeName(self, base_name)
+
+    def generateInitCode(self, indent=0):
+        code = ExecutionBlock.generateInitCode(self)
+        code.append("self.%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, "
+                    "mupif.Physics.PhysicalQuantities._unit_table['%s'])" % (
+                        self.code_name, self.value, self.units))
+        return push_indents_before_each_line(code, indent)
+
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
+        return []
+
+    def setValue(self, val):
+        self.value = val
+        self.updateLabel()
+
+    def setPropertyID(self, val):
+        self.propID = val
+        self.updateLabel()
+
+    def setValueType(self, val):
+        self.valueType = val
+        self.updateLabel()
+
+    def setObjectID(self, val):
+        self.objectID = val
+        self.updateLabel()
+
+    def setUnits(self, val):
+        self.units = val
+        self.updateLabel()
+
+    def addSpecificMenuItems(self, menu):
+        sub_menu = menu.addMenu("Modify")
+
+        def _setValue():
+            temp = QtWidgets.QInputDialog()
+            new_value, ok_pressed = QtWidgets.QInputDialog.getDouble(temp, "Set value", "", value=self.value)
+            if ok_pressed:
+                self.setValue(new_value)
+
+        def _setUnits():
+            # if self.getDataSlotWithName('value').connected():
+            #     QtWidgets.QMessageBox.about(self.workflow.widget, "Action denied",
+            #                                 "Cannot change Units while the DataSlot is connected.")
+            # else:
+            items = ['']
+            items.extend(list(map(str, mupif.Physics.PhysicalQuantities._unit_table)))
+            items_real = [0]
+            items_real.extend(list(mupif.Physics.PhysicalQuantities._unit_table))
+
+            selected_id = 0
+            if str(self.units) in items:
+                selected_id = items.index(str(self.units))
+
+            temp = QtWidgets.QInputDialog()
+            item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose Units", "", items, selected_id, False)
+            if ok and item:
+                if item in items:
+                    selected_id = items.index(item)
+                    self.setUnits(items_real[selected_id])
+
+        action = sub_menu.addAction("Set value")
+        action.triggered.connect(_setValue)
+        action = sub_menu.addAction("Set units")
+        action.triggered.connect(_setUnits)
 
     def addMenuItems(self, menu):
         ExecutionBlock.addMenuItems(self, menu)
@@ -1177,19 +1313,19 @@ class ModelBlock(ExecutionBlock):
 class TimeLoopBlock(SequentialBlock):
     def __init__(self, parent, workflow):
         SequentialBlock.__init__(self, parent, workflow)
-        self.addDataSlot(InputDataSlot(self, "start_time", DataSlotType.Scalar, False))
-        self.addDataSlot(InputDataSlot(self, "target_time", DataSlotType.Scalar, False))
+        self.addDataSlot(InputDataSlot(self, "start_time", DataSlotType.PhysicalQuantity, False))
+        self.addDataSlot(InputDataSlot(self, "target_time", DataSlotType.PhysicalQuantity, False))
 
     def getStartTime(self):
         connected_slot = self.getDataSlotWithName("start_time").getLinkedDataSlot()
         if connected_slot:
-            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot, get_variable=True)
+            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
         return "0."  # TODO call ERROR
 
     def getTargetTime(self):
         connected_slot = self.getDataSlotWithName("target_time").getLinkedDataSlot()
         if connected_slot:
-            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot, get_variable=True)
+            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
         return "0."  # TODO call ERROR
 
     def generateInitCode(self, indent=0):
@@ -1205,10 +1341,14 @@ class TimeLoopBlock(SequentialBlock):
         var_time_step_number = "%s_time_step_number" % self.code_name
 
         code.append("timeUnits = mupif.Physics.PhysicalQuantities.PhysicalUnit('s',   1.,    [0, 0, 1, 0, 0, 0, 0, 0, 0])")
-        code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
-            var_time, self.getStartTime()))
-        code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
-            var_target_time, self.getTargetTime()))
+        # code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
+        #     var_time, self.getStartTime()))
+        # code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
+        #     var_target_time, self.getTargetTime()))
+
+        code.append("%s = %s" % (var_time, self.getStartTime()))
+        code.append("%s = %s" % (var_target_time, self.getTargetTime()))
+
         code.append("%s = True" % var_compute)
         code.append("%s = 0" % var_time_step_number)
 
@@ -1264,6 +1404,7 @@ class CustomPythonCodeBlock(ExecutionBlock):
         ExecutionBlock.__init__(self, parent, workflow)
         self.code_lines = ["# CustomPythonBlock code"]
         self.updateLabel()
+        self.fillColor = QtGui.QColor(255, 255, 255)
 
     def generateInitCode(self, indent=0):
         return []

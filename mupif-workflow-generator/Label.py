@@ -25,7 +25,7 @@ class Label(QtWidgets.QGraphicsItem):
 
         self.text_color = QtGui.QColor(10, 10, 10)
 
-        self.setText(text)
+        self.setText(text, initialization=True)
 
     def __repr__(self):
         return "Label (%s.label: '%s')" % (self.owner.name, self.text)
@@ -60,8 +60,18 @@ class Label(QtWidgets.QGraphicsItem):
                              self.h)
         return rect
 
-    def setText(self, val):
+    def setText(self, val, initialization=False):
         self.text = val
         self.lines = self.text.split('\n')
         self.h = self.line_h*len(self.lines)
+        if not initialization:
+            self.owner.callUpdatePositionOfWholeWorkflow()
+
+    def getNeededWidth(self):
+        max_width = 0
+        for line in self.lines:
+            width = helpers.getTextSize(line).width()
+            if width > max_width:
+                max_width = width
+        return int(max_width)
 

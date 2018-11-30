@@ -175,11 +175,12 @@ class Window(QtWidgets.QMainWindow):
         def _run_execution_code():
             if self.widget.workflow.checkConsistency(execution=True):
                 code = self.widget.workflow.getExecutionCode()
-                temp_file = 'sldfjlksdajlvkasd.py'
+                temp_file = './temporary_execution_script.py'
                 f = open(temp_file, "w")
                 f.write(formatCodeToText(code))
                 f.close()
                 os.system("python3 %s" % temp_file)
+                os.remove(temp_file)
             else:
                 print("Workflow.checkConsistency() returned False")
                 QtWidgets.QMessageBox.about(self, "Workflow consistency error",

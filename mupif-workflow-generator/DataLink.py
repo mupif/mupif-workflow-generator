@@ -59,6 +59,8 @@ class DataSlotType(Enum):
     Field = 2
     Function = 3
 
+    PhysicalQuantity = 5
+
     Int = 11
     Double = 12
     String = 13
@@ -168,6 +170,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def __repr__(self):
         return "DataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
+
+    def getNeededWidth(self):
+        return helpers.getTextSize(self.displayName).width()+self.spacing+self.w
 
     def setTotalWidth(self, val):
         self.w_tot = val
