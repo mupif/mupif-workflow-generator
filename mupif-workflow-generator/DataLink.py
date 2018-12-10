@@ -290,13 +290,19 @@ class DataSlot(QtWidgets.QGraphicsItem):
         rect = QtCore.QRectF(self.x, self.y, self.w, self.h)
         return rect
 
+    def highlightConnectedDataLinks(self, highlight):
+        for link in self.dataLinks:
+            link.highlight(highlight)
+
     def highlight(self, toggle):
         """Toggle the highlight color on/off.
         """
         if toggle:
             self.hover = True
+            self.highlightConnectedDataLinks(True)
         else:
             self.hover = False
+            self.highlightConnectedDataLinks(False)
         self.updateColor()
 
     def paint(self, painter, option, widget):
@@ -347,7 +353,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         """Handle DataLink creation."""
         if event.button() == QtCore.Qt.LeftButton:
             if not self.reachedMaxConnections():
-                print("Creating new dataLink.")
+                # print("Creating new dataLink.")
                 self.temp_data_link = DataLink()
                 self.temp_data_link.temporary = True
                 self.temp_data_link.source = self
@@ -364,7 +370,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
     def mouseReleaseEvent(self, event):
         """Try to create DataLink."""
         if self.temp_data_link:
-            print("trying to connect two knobs (block)")
+            # print("trying to connect two knobs (block)")
             if event.button() == QtCore.Qt.LeftButton:
                 node = self.parentItem()
                 scene = node.scene()
@@ -514,9 +520,12 @@ class DataLink(QtWidgets.QGraphicsPathItem):
     """
     def __init__(self, input=None, output=None, **kwargs):
         super(DataLink, self).__init__(**kwargs)
-        self.lineColor = QtGui.QColor(0, 0, 250)
+        self.lineColor_default = QtGui.QColor(50, 200, 100)
+        self.lineColor = self.lineColor_default
+        self.opacity_default = 1.0
+        self.setOpacity(self.opacity_default)
         self.removalColor = QtCore.Qt.red
-        self.thickness = 2
+        self.thickness = 3
         self.uuid = str(uuid.uuid4())
 
         self.source = None  # DataProvider slot
@@ -540,6 +549,14 @@ class DataLink(QtWidgets.QGraphicsPathItem):
 
     def __repr__(self):
         return self.__str__()
+
+    def highlight(self, highlight):
+        if highlight:
+            self.lineColor = QtGui.QColor(255, 0, 0)
+            self.setOpacity(1.)
+        else:
+            self.lineColor = self.lineColor_default
+            self.setOpacity(self.opacity_default)
 
     def mousePressEvent(self, event):
         """Delete DataLink if icon is clicked with DELETE_MODIFIER_KEY pressed."""
@@ -581,12 +598,12 @@ class DataLink(QtWidgets.QGraphicsPathItem):
 
         # self.setBrush(QtCore.Qt.NoBrush)
         self.setZValue(1)
-        self.setOpacity(0.5)
+        # self.setOpacity(0.5)
         super(DataLink, self).paint(painter, option, widget)
 
     def destroy(self):
         """Remove this DataLink and its reference in other objects."""
-        print("destroy DataLink:", self)
+        # print("destroy DataLink:", self)
         if self.source:
             self.source.removeDataConnection(self)
         if self.target:

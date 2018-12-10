@@ -20,7 +20,7 @@ class Window(QtWidgets.QMainWindow):
         super(Window, self).__init__()
         self.application = parent
         self.setGeometry(50, 50, 800, 1000)
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(300)
         self.setMinimumHeight(500)
         self.setWindowTitle("MuPIF Workflow Generator")
         # self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
@@ -210,11 +210,11 @@ class Window(QtWidgets.QMainWindow):
         workflow_action_run_execution_code = QtWidgets.QAction('Run execution code', self)
         workflow_action_run_execution_code.triggered.connect(_run_execution_code)
 
-        workflow_action_save_to_file = QtWidgets.QAction('Save to file', self)
+        workflow_action_save_to_file = QtWidgets.QAction('Save to JSON file', self)
         workflow_action_save_to_file.triggered.connect(_save_to_json_file)
         workflow_action_save_to_file.setShortcut("Ctrl+S")
 
-        workflow_action_load_from_file = QtWidgets.QAction('Load from file', self)
+        workflow_action_load_from_file = QtWidgets.QAction('Load from JSON file', self)
         workflow_action_load_from_file.triggered.connect(_load_from_json_file)
         workflow_action_load_from_file.setShortcut("Ctrl+L")
         #
@@ -249,5 +249,5 @@ class Window(QtWidgets.QMainWindow):
         sys.exit()
 
     def resizeEvent(self, event):
-        self.widget.setGeometry(10, 20, self.width() - 20, self.height() - 30)
+        self.widget.setGeometry(5, 15, self.width() - 10, self.height() - 20)
 

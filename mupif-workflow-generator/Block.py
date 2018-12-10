@@ -99,6 +99,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.header = Header.Header(self, self.__class__.__name__)
         self.header.setParentItem(self)
 
+        self.clonable = False
+
         # General configuration.
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
         self.setCursor(QtCore.Qt.SizeAllCursor)
@@ -112,6 +114,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         self.button_menu.setParentItem(self)
 
         self.workflow.updateChildrenSizeAndPositionAndResizeSelf()
+
+    def clone(self):
+        """"""
+
+    def setPropertiesFromAnotherBlockOfSameType(self, block):
+        """"""
 
     def updateLabel(self):
         """"""
@@ -484,11 +492,20 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             self.addMenuItems_AddStandardBlock(menu)
             self.addMenuItems_AddModelBlock(menu)
 
+    def addCloneAction(self, menu):
+        if self.clonable:
+            def _clone():
+                self.clone()
+
+            clone_menu = menu.addAction("Clone")
+            clone_menu.triggered.connect(_clone)
+
     def addCommonMenuActions(self, menu):
         if not isinstance(self, WorkflowBlock):
             self.addMoveMenuActions(menu)
             self.addDeleteMenuActions(menu)
         self.addCommonMenuActionsForParentBlocks(menu)
+        self.addCloneAction(menu)
 
     def addMenuItems(self, menu):
         self.addCommonMenuActions(menu)
@@ -617,7 +634,7 @@ class WorkflowBlock(SequentialBlock):
 
         ExecutionBlock.list_of_block_classes = []
         ExecutionBlock.list_of_block_classes.extend([TimeLoopBlock, FloatVariableBlock, CustomPythonCodeBlock, IfElseBlock])
-        ExecutionBlock.list_of_block_classes.extend([ConstantPropertyBlock])
+        ExecutionBlock.list_of_block_classes.extend([ConstantPropertyBlock, ConstantPhysicalQuantityBlock])
 
     def getScene(self):
         return self.loc_scene
@@ -860,7 +877,7 @@ class VariableBlock(ExecutionBlock):
     def __init__(self, parent, workflow):
         ExecutionBlock.__init__(self, parent, workflow)
         self.value = None
-        self.fillColor = QtGui.QColor(51, 204, 255)
+        self.fillColor = QtGui.QColor(255, 124, 128)
 
     def paint(self, painter, option, widget):
         ExecutionBlock.paint(self, painter, option, widget)
@@ -874,6 +891,11 @@ class VariableBlock(ExecutionBlock):
     def addSpecificMenuItems(self, menu):
         def _setValue():
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Set value", "")
             if ok_pressed:
                 self.setValueFromTextInput(new_value)
@@ -953,15 +975,35 @@ class ConstantPropertyBlock(VariableBlock):
         VariableBlock.__init__(self, parent, workflow)
         self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Property, False))
         self.value = ()
-        self.propID = 0
+        self.propID = None
         self.valueType = None
         self.units = None
         self.objectID = 0
         self.updateLabel()
+        self.clonable = True
+
+    def clone(self):
+        block = ConstantPropertyBlock(self.parent, self.workflow)
+        block.setPropertiesFromAnotherBlockOfSameType(self)
+        self.parent.addExecutionBlock(block)
+
+    def setPropertiesFromAnotherBlockOfSameType(self, block):
+        """
+
+        :param ConstantPropertyBlock block:
+        :return: 
+        """
+        self.value = block.value
+        self.propID = block.propID
+        self.valueType = block.valueType
+        self.units = block.units
+        self.objectID = block.objectID
+        self.updateLabel()
 
     def updateLabel(self):
-        self.label.setText("value           = %s\npropID        = %s\nvalueType = %s\nunits           = %s\nobjectID    = %s" % (
-            self.value, self.propID, self.valueType, self.units, self.objectID))
+        self.label.setText("value           = %s\npropID        = %s\nvalueType = %s\nunits           = %s\n"
+                           "objectID    = %s" % (
+                            self.value, self.propID, self.valueType, self.units, self.objectID))
 
     def getDictForJSON(self):
         answer = ExecutionBlock.getDictForJSON(self)
@@ -974,11 +1016,11 @@ class ConstantPropertyBlock(VariableBlock):
 
     def initializeFromJSONData(self, json_data):
         ExecutionBlock.initializeFromJSONData(self, json_data)
-        self.value = json_data['value']
-        self.propID = json_data['propID']
-        self.valueType = json_data['valueType']
-        self.units = json_data['units']
-        self.objectID = json_data['objectID']
+        self.setValue(json_data['value'])
+        self.setPropertyID(json_data['propID'])
+        self.setValueType(json_data['valueType'])
+        self.setUnits(json_data['units'])
+        self.setObjectID(json_data['objectID'])
 
     def generateCodeName(self, base_name='constant_property_'):
         ExecutionBlock.generateCodeName(self, base_name)
@@ -1019,6 +1061,11 @@ class ConstantPropertyBlock(VariableBlock):
 
         def _setValue():
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter new value", "New value")
             if ok_pressed:
                 t = ()
@@ -1037,6 +1084,11 @@ class ConstantPropertyBlock(VariableBlock):
                 selected_id = items.index(str(self.propID))
 
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose PropertyID", "", items, selected_id, False)
             if ok and item:
                 if item in items:
@@ -1058,6 +1110,11 @@ class ConstantPropertyBlock(VariableBlock):
                 selected_id = items.index(str(self.valueType))
 
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose ValueType", "", items, selected_id, False)
             if ok and item:
                 if item in items:
@@ -1067,6 +1124,11 @@ class ConstantPropertyBlock(VariableBlock):
 
         def _setObjectID():
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             new_value, ok_pressed = QtWidgets.QInputDialog.getInt(temp, "Set objectID", "", value=self.objectID, min=0)
             if ok_pressed:
                 self.setObjectID(new_value)
@@ -1086,6 +1148,11 @@ class ConstantPropertyBlock(VariableBlock):
                 selected_id = items.index(str(self.units))
 
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose Units", "", items, selected_id, False)
             if ok and item:
                 if item in items:
@@ -1115,6 +1182,22 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
         self.value = 0.
         self.units = None
         self.updateLabel()
+        self.clonable = True
+
+    def clone(self):
+        block = ConstantPhysicalQuantityBlock(self.parent, self.workflow)
+        block.setPropertiesFromAnotherBlockOfSameType(self)
+        self.parent.addExecutionBlock(block)
+
+    def setPropertiesFromAnotherBlockOfSameType(self, block):
+        """
+
+        :param ConstantPhysicalQuantityBlock block:
+        :return:
+        """
+        self.value = block.value
+        self.units = block.units
+        self.updateLabel()
 
     def updateLabel(self):
         self.label.setText("value = %s\nunits = %s" % (self.value, self.units))
@@ -1127,8 +1210,8 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
 
     def initializeFromJSONData(self, json_data):
         ExecutionBlock.initializeFromJSONData(self, json_data)
-        self.value = json_data['value']
-        self.units = json_data['units']
+        self.setValue(json_data['value'])
+        self.setUnits(json_data['units'])
 
     def generateCodeName(self, base_name='constant_physical_quantity_'):
         ExecutionBlock.generateCodeName(self, base_name)
@@ -1147,18 +1230,6 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
         self.value = val
         self.updateLabel()
 
-    def setPropertyID(self, val):
-        self.propID = val
-        self.updateLabel()
-
-    def setValueType(self, val):
-        self.valueType = val
-        self.updateLabel()
-
-    def setObjectID(self, val):
-        self.objectID = val
-        self.updateLabel()
-
     def setUnits(self, val):
         self.units = val
         self.updateLabel()
@@ -1168,6 +1239,11 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
 
         def _setValue():
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             new_value, ok_pressed = QtWidgets.QInputDialog.getDouble(temp, "Set value", "", value=self.value)
             if ok_pressed:
                 self.setValue(new_value)
@@ -1187,6 +1263,11 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
                 selected_id = items.index(str(self.units))
 
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             item, ok = QtWidgets.QInputDialog.getItem(temp, "Choose Units", "", items, selected_id, False)
             if ok and item:
                 if item in items:
@@ -1209,13 +1290,20 @@ class ModelBlock(ExecutionBlock):
         self.model = model
         self.name = model_name
         self.input_file = ""
-        self.fillColor = QtGui.QColor(255, 77, 77)
+        self.fillColor = QtGui.QColor(183, 222, 232)
+
+    def updateLabel(self):
+        if self.input_file != "":
+            self.label.setText("input_file = '%s'" % self.input_file)
+        else:
+            self.label.setText("")
 
     def paint(self, painter, option, widget):
         ExecutionBlock.paint(self, painter, option, widget)
 
     def setInputFile(self, input_file):
         self.input_file = input_file
+        self.updateLabel()
 
     def getInputSlots(self):
         return self.model.getInputSlots()
@@ -1298,9 +1386,14 @@ class ModelBlock(ExecutionBlock):
     def addLocalMenuItems(self, menu):
         def _set_input_file():
             temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
             new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter input file name", "Input file:", QtWidgets.QLineEdit.Normal, self.input_file)
             if ok_pressed:
-                self.input_file = new_value
+                self.setInputFile(new_value)
 
         action = menu.addAction("Set input file")
         action.triggered.connect(_set_input_file)
@@ -1479,6 +1572,15 @@ class CustomPythonCodeBlock(ExecutionBlock):
     def addMenuItems(self, menu):
         ExecutionBlock.addMenuItems(self, menu)
         self.addEditCodeItems(menu)
+
+    def getDictForJSON(self):
+        answer = ExecutionBlock.getDictForJSON(self)
+        answer.update({'code_lines': self.code_lines})
+        return answer
+
+    def initializeFromJSONData(self, json_data):
+        ExecutionBlock.initializeFromJSONData(self, json_data)
+        self.setCodeLines(json_data['code_lines'])
 
 
 class IfElseBlock(ExecutionBlock):
