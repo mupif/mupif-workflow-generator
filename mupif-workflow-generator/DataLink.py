@@ -127,6 +127,8 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.obj_type = obj_type
         self.obj_id = obj_id
 
+        self.code_name = ""
+
         if isinstance(self, OutputDataSlot):
             self.optional = True
         if isinstance(self, ExternalInputDataSlot) or isinstance(self, ExternalOutputDataSlot):
@@ -481,6 +483,18 @@ class DataSlot(QtWidgets.QGraphicsItem):
             return self.dataLinks[0].giveTheOtherSlot(self)
         return None
 
+    def generateCodeName(self, base_name='dataslot_'):
+        i = 0
+        while True:
+            i += 1
+            new_name = "%s%d" % (base_name, i)
+            if new_name not in self.owner.workflow.getAllElementCodeNames():
+                self.code_name = new_name
+                return
+
+    def getCodeRepresentation(self):
+        return "self.%s" % self.code_name
+
 
 class InputDataSlot (DataSlot):
     """
@@ -508,10 +522,28 @@ class ExternalInputDataSlot(InputDataSlot):
     def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
         InputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
 
+    def generateCodeName(self, base_name='external_output_'):
+        i = 0
+        while True:
+            i += 1
+            new_name = "%s%d" % (base_name, i)
+            if new_name not in self.owner.getAllElementCodeNames():
+                self.code_name = new_name
+                return
+
 
 class ExternalOutputDataSlot(OutputDataSlot):
     def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
         OutputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
+
+    def generateCodeName(self, base_name='external_input_'):
+        i = 0
+        while True:
+            i += 1
+            new_name = "%s%d" % (base_name, i)
+            if new_name not in self.owner.getAllElementCodeNames():
+                self.code_name = new_name
+                return
 
 
 class DataLink(QtWidgets.QGraphicsPathItem):

@@ -122,7 +122,9 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         """"""
 
     def updateLabel(self):
-        """"""
+        """
+        Updates the block's label according to the block's properties.
+        """
 
     @staticmethod
     def getIDOfModelInList(model):
@@ -572,10 +574,10 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def generateCodeName(self, base_name='block_'):
         i = 0
-        while(True):
+        while True:
             i += 1
             new_name = "%s%d" % (base_name, i)
-            if not new_name in self.workflow.getAllBlockCodeNames():
+            if new_name not in self.workflow.getAllElementCodeNames():
                 self.code_name = new_name
                 return
 
@@ -640,6 +642,11 @@ class WorkflowBlock(SequentialBlock):
         return self.loc_scene
 
     def getAllDataLinks(self):
+        """
+
+        :return: Returns datalinks of the whole workflow.
+        :rtype DataLink[]
+        """
         answer = []
         for block in self.getChildExecutionBlocks(None, True):
             for datalink in block.getConnectedDataLinks():
@@ -758,7 +765,7 @@ class WorkflowBlock(SequentialBlock):
 
         #
 
-        self.generateAllBlockCodeNames()
+        self.generateAllElementCodeNames()
 
         all_model_blocks = self.getChildExecutionBlocks(None, True)
         child_blocks = self.getChildExecutionBlocks()
@@ -800,7 +807,23 @@ class WorkflowBlock(SequentialBlock):
                     if code_add != "":
                         code_add = "%s, " % code_add
                     code_add = "%s{%s}" % (code_add, params)
+
             code.append("\t\tself.metadata.update({'outputs': [%s]})" % code_add)
+
+            # initialization of workflow inputs
+            for s in self.getAllExternalDataSlots("out"):
+                if s.connected():
+                    code.append("\t")
+                    code.append("\t\t# initialization code of external input")
+                    code.append("\t\tself.%s = None" % s.code_name)
+                    code.append("\t\t# It should be defined from outside using set() method.")
+
+            # initialization of workflow outputs
+            for s in self.getAllExternalDataSlots("in"):
+                if s.connected():
+                    code.append("\t")
+                    code.append("\t\t# initialization code of external output")
+                    code.append("\t\tself.%s = None  # TODO" % s.code_name)
 
         # init codes of child blocks
 
@@ -821,10 +844,44 @@ class WorkflowBlock(SequentialBlock):
                 i += 1
             code.append("\t\treturn min(%s)" % code_add)
 
+        # set method
+
         code.append("\t")
+        code.append("\t# set method for all external inputs")
+        code.append("\tdef set(self, obj, objectID=0):")
+        code.append("\t\t\t")
+        code.append("\t\t# in case of Property")
+        code.append("\t\tif isinstance(obj, mupif.Property.Property):")
+        code.append("\t\t\tpass")
+        for s in self.getAllExternalDataSlots("out"):
+            if s.connected():
+                if s.type == DataSlotType.Property:
+                    code.append("\t\t\tif objectID == '%s':" % s.name)
+                    code.append("\t\t\t\tself.%s = obj" % s.code_name)
+
+        code.append("\t\t\t")
+        code.append("\t\t# in case of Field")
+        code.append("\t\tif isinstance(obj, mupif.Field.Field):")
+        code.append("\t\t\tpass")
+        for s in self.getAllExternalDataSlots("out"):
+            if s.connected():
+                if s.type == DataSlotType.Field:
+                    code.append("\t\t\tif objectID == '%s':" % s.name)
+                    code.append("\t\t\t\tself.%s = obj" % s.code_name)
+
+        code.append("\t\t\t")
+        code.append("\t\t# in case of Function")
+        code.append("\t\tif isinstance(obj, mupif.Function.Function):")
+        code.append("\t\t\tpass")
+        for s in self.getAllExternalDataSlots("out"):
+            if s.connected():
+                if s.type == DataSlotType.Function:
+                    code.append("\t\t\tif objectID == '%s':" % s.name)
+                    code.append("\t\t\t\tself.%s = obj" % s.code_name)
 
         # terminate
 
+        code.append("\t")
         code.append("\tdef terminate(self):")
         for model in all_model_blocks:
             if(isinstance(model, ModelBlock)):
@@ -863,14 +920,21 @@ class WorkflowBlock(SequentialBlock):
     def getClassCode(self):
         return self.generateWorkflowCode(class_code=True)
 
-    def getAllBlockCodeNames(self):
-        return [block.code_name for block in self.getChildExecutionBlocks(None, True)]
+    def getAllElementCodeNames(self):
+        code_names = [block.code_name for block in self.getChildExecutionBlocks(None, True)]
+        code_names.extend([slot.code_name for slot in self.getAllExternalDataSlots()])
+        return code_names
 
-    def generateAllBlockCodeNames(self):
-        for block in self.getChildExecutionBlocks(None, True):
-            block.code_name = ""
+    def generateAllElementCodeNames(self):
+        # for block in self.getChildExecutionBlocks(None, True):
+        #     block.code_name = ""
         for block in self.getChildExecutionBlocks(None, True):
             block.generateCodeName()
+        for slot in self.getAllExternalDataSlots():
+            slot.generateCodeName()
+
+    def generateOutputDataSlotGetFunction(self, slot, time=''):
+        return slot.getCodeRepresentation()
 
 
 class VariableBlock(ExecutionBlock):
@@ -919,6 +983,9 @@ class FloatVariableBlock(VariableBlock):
         self.addDataSlot(OutputDataSlot(self, "value", DataSlotType.Scalar, False))
 
     def updateLabel(self):
+        """
+        Updates the block's label according to the block's properties.
+        """
         self.label.setText("value = %.3le" % self.value)
 
     def setValueFromTextInput(self, val):
@@ -951,9 +1018,17 @@ class FloatVariableBlock(VariableBlock):
         return []
 
     def generateInitCode(self, indent=0):
-        code = ExecutionBlock.generateInitCode(self)
-        code.append("self.%s = %le" % (self.code_name, self.value))
-        return push_indents_before_each_line(code, indent)
+        """
+        Generates the initialization code of this block.
+        :param int indent: number of indents to be added before each line
+        :return: array of code lines
+        :rtype str[]
+        """
+        if self.getDataSlotWithName("value").connected():
+            code = ExecutionBlock.generateInitCode(self)
+            code.append("self.%s = %le" % (self.code_name, self.value))
+            return push_indents_before_each_line(code, indent)
+        return []
 
     def generateOutputDataSlotGetFunction(self, slot, time='', get_variable=False):
         if get_variable:
@@ -1001,6 +1076,9 @@ class ConstantPropertyBlock(VariableBlock):
         self.updateLabel()
 
     def updateLabel(self):
+        """
+        Updates the block's label according to the block's properties.
+        """
         self.label.setText("value           = %s\npropID        = %s\nvalueType = %s\nunits           = %s\n"
                            "objectID    = %s" % (
                             self.value, self.propID, self.valueType, self.units, self.objectID))
@@ -1026,12 +1104,20 @@ class ConstantPropertyBlock(VariableBlock):
         ExecutionBlock.generateCodeName(self, base_name)
 
     def generateInitCode(self, indent=0):
-        code = ExecutionBlock.generateInitCode(self)
-        code.append("self.%s = mupif.Property.ConstantProperty("
-                    "%s, mupif.propertyID.%s, mupif.ValueType.%s, mupif.Physics.PhysicalQuantities._unit_table['%s'], "
-                    "None, %s)" % (
-                        self.code_name, self.value, self.propID, self.valueType, self.units, self.objectID))
-        return push_indents_before_each_line(code, indent)
+        """
+        Generates the initialization code of this block.
+        :param int indent: number of indents to be added before each line
+        :return: array of code lines
+        :rtype str[]
+        """
+        if self.getDataSlotWithName("value").connected():
+            code = ExecutionBlock.generateInitCode(self)
+            code.append("self.%s = mupif.Property.ConstantProperty("
+                        "%s, mupif.propertyID.%s, mupif.ValueType.%s, mupif.Physics.PhysicalQuantities._unit_table['%s'], "
+                        "None, %s)" % (
+                            self.code_name, self.value, self.propID, self.valueType, self.units, self.objectID))
+            return push_indents_before_each_line(code, indent)
+        return []
 
     def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         return []
@@ -1200,6 +1286,9 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
         self.updateLabel()
 
     def updateLabel(self):
+        """
+        Updates the block's label according to the block's properties.
+        """
         self.label.setText("value = %s\nunits = %s" % (self.value, self.units))
 
     def getDictForJSON(self):
@@ -1217,11 +1306,19 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
         ExecutionBlock.generateCodeName(self, base_name)
 
     def generateInitCode(self, indent=0):
-        code = ExecutionBlock.generateInitCode(self)
-        code.append("self.%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, "
-                    "mupif.Physics.PhysicalQuantities._unit_table['%s'])" % (
-                        self.code_name, self.value, self.units))
-        return push_indents_before_each_line(code, indent)
+        """
+        Generates the initialization code of this block.
+        :param int indent: number of indents to be added before each line
+        :return: array of code lines
+        :rtype str[]
+        """
+        if self.getDataSlotWithName("value").connected():
+            code = ExecutionBlock.generateInitCode(self)
+            code.append("self.%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, "
+                        "mupif.Physics.PhysicalQuantities._unit_table['%s'])" % (
+                            self.code_name, self.value, self.units))
+            return push_indents_before_each_line(code, indent)
+        return []
 
     def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
         return []
@@ -1289,20 +1386,36 @@ class ModelBlock(ExecutionBlock):
         ExecutionBlock.__init__(self, parent, workflow)
         self.model = model
         self.name = model_name
-        self.input_file = ""
+        self.input_file_name = ""
+        self.input_file_directory = "."
         self.fillColor = QtGui.QColor(183, 222, 232)
 
     def updateLabel(self):
-        if self.input_file != "":
-            self.label.setText("input_file = '%s'" % self.input_file)
-        else:
-            self.label.setText("")
+        """
+        Updates the block's label according to the block's properties.
+        """
+        label_text = ""
+        if self.input_file_name != "":
+            label_text += "input_file = '%s'\nworkdir = '%s'" % (self.input_file_name, self.input_file_directory)
+        self.label.setText(label_text)
 
     def paint(self, painter, option, widget):
         ExecutionBlock.paint(self, painter, option, widget)
 
-    def setInputFile(self, input_file):
-        self.input_file = input_file
+    def setInputFile(self, val):
+        """
+        Sets the input file name.
+        :param str val: input file name
+        """
+        self.input_file_name = val
+        self.updateLabel()
+
+    def setInputFilePath(self, val):
+        """
+        Sets the input file directory.
+        :param str val: input file directory.
+        """
+        self.input_file_directory = val
         self.updateLabel()
 
     def getInputSlots(self):
@@ -1312,10 +1425,16 @@ class ModelBlock(ExecutionBlock):
         return self.model.getOutputSlots()
 
     def generateInitCode(self, indent=0):
+        """
+        Generates the initialization code of this block.
+        :param int indent: number of indents to be added before each line
+        :return: array of code lines
+        :rtype str[]
+        """
         code = ExecutionBlock.generateInitCode(self)
         input_file_add = ""
-        if self.input_file != "":
-            input_file_add = "file='%s', workdir='.'" % self.input_file
+        if self.input_file_name != "":
+            input_file_add = "file='%s', workdir='%s'" % (self.input_file_name, self.input_file_directory)
         code.append("self.%s = %s(%s)" % (self.code_name, self.name, input_file_add))
         return push_indents_before_each_line(code, indent)
 
@@ -1384,19 +1503,31 @@ class ModelBlock(ExecutionBlock):
         return "# dependency of %s not found" % self.code_name
 
     def addLocalMenuItems(self, menu):
-        def _set_input_file():
+        def _set_input_file_name():
             temp = QtWidgets.QInputDialog()
-            px = self.workflow.widget.window.x()
-            py = self.workflow.widget.window.x()
             dw = temp.width()
             dh = temp.height()
             temp.setGeometry(200, 200, dw, dh)
-            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter input file name", "Input file:", QtWidgets.QLineEdit.Normal, self.input_file)
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter input file name", "", QtWidgets.QLineEdit.Normal, self.input_file_name)
             if ok_pressed:
                 self.setInputFile(new_value)
 
-        action = menu.addAction("Set input file")
-        action.triggered.connect(_set_input_file)
+        def _set_input_file_directory():
+            temp = QtWidgets.QInputDialog()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter input file directory", "", QtWidgets.QLineEdit.Normal, self.input_file_directory)
+            if ok_pressed:
+                self.setInputFilePath(new_value)
+
+        submenu = menu.addMenu("Set input file")
+
+        action = submenu.addAction("File name")
+        action.triggered.connect(_set_input_file_name)
+
+        action = submenu.addAction("File directory")
+        action.triggered.connect(_set_input_file_directory)
 
     def addMenuItems(self, menu):
         ExecutionBlock.addMenuItems(self, menu)
@@ -1515,6 +1646,9 @@ class CustomPythonCodeBlock(ExecutionBlock):
         ExecutionBlock.paint(self, painter, option, widget)
 
     def updateLabel(self):
+        """
+        Updates the block's label according to the block's properties.
+        """
         lenght = len(self.code_lines)
         if lenght > 1:
             self.label.setText("%d lines of code" % lenght)
