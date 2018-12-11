@@ -155,7 +155,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         for iSlot in input_slots:
             # try to locate corresponding dataLink
             # print (iLink)
-            if len(iSlot.dataLinks) == 0 and iSlot.optional == False:
+            if len(iSlot.dataLinks) == 0 and not iSlot.optional:
                 # raise AttributeError("No input link for slot detected")
                 code.append("# No input for slot %s detected" % iSlot.name)
             elif len(iSlot.dataLinks) > 1:
@@ -789,8 +789,9 @@ class WorkflowBlock(SequentialBlock):
             code_add = ""
             for s in self.getAllExternalDataSlots("out"):
                 if s.connected():
-                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
-                        s.name, DataSlotType.getNameFromType(s.type), False, "")
+                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s', 'obj_type': '%s'" % (
+                        s.name, DataSlotType.getNameFromType(s.type), False, "",
+                        s.getLinkedDataSlot().obj_type)
 
                     if code_add != "":
                         code_add = "%s, " % code_add
@@ -801,8 +802,9 @@ class WorkflowBlock(SequentialBlock):
             code_add = ""
             for s in self.getAllExternalDataSlots("in"):
                 if s.connected():
-                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s'" % (
-                        s.name, DataSlotType.getNameFromType(s.type), True, "")
+                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s', 'obj_type': '%s'" % (
+                        s.name, DataSlotType.getNameFromType(s.type), True, "",
+                        s.getLinkedDataSlot().obj_type)
 
                     if code_add != "":
                         code_add = "%s, " % code_add
@@ -818,13 +820,6 @@ class WorkflowBlock(SequentialBlock):
                     code.append("\t\tself.%s = None" % s.code_name)
                     code.append("\t\t# It should be defined from outside using set() method.")
 
-            # initialization of workflow outputs
-            for s in self.getAllExternalDataSlots("in"):
-                if s.connected():
-                    code.append("\t")
-                    code.append("\t\t# initialization code of external output")
-                    code.append("\t\tself.%s = None  # TODO" % s.code_name)
-
         # init codes of child blocks
 
         for model in all_model_blocks:
@@ -838,53 +833,102 @@ class WorkflowBlock(SequentialBlock):
             code_add = ""
             i = 0
             for model in child_blocks:
-                if i:
-                    code_add += ", "
-                code_add += "self.%s.getCriticalTimeStep()" % model.code_name
-                i += 1
-            code.append("\t\treturn min(%s)" % code_add)
+                if isinstance(model, ModelBlock):
+                    if i:
+                        code_add += ", "
+                    code_add += "self.%s.getCriticalTimeStep()" % model.code_name
+                    i += 1
+            code.append("\t\treturn min([%s])" % code_add)
 
-        # set method
+        if class_code:
+            #
+            #
+            # set method
 
-        code.append("\t")
-        code.append("\t# set method for all external inputs")
-        code.append("\tdef set(self, obj, objectID=0):")
-        code.append("\t\t\t")
-        code.append("\t\t# in case of Property")
-        code.append("\t\tif isinstance(obj, mupif.Property.Property):")
-        code.append("\t\t\tpass")
-        for s in self.getAllExternalDataSlots("out"):
-            if s.connected():
-                if s.type == DataSlotType.Property:
-                    code.append("\t\t\tif objectID == '%s':" % s.name)
-                    code.append("\t\t\t\tself.%s = obj" % s.code_name)
+            code.append("\t")
+            code.append("\t# set method for all external inputs")
+            code.append("\tdef set(self, obj, objectID=0):")
+            code.append("\t\t\t")
+            code.append("\t\t# in case of Property")
+            code.append("\t\tif isinstance(obj, mupif.Property.Property):")
+            code.append("\t\t\tpass")
+            for s in self.getAllExternalDataSlots("out"):
+                if s.connected():
+                    if s.type == DataSlotType.Property:
+                        code.append("\t\t\tif objectID == '%s':" % s.name)
+                        code.append("\t\t\t\tself.%s = obj" % s.code_name)
 
-        code.append("\t\t\t")
-        code.append("\t\t# in case of Field")
-        code.append("\t\tif isinstance(obj, mupif.Field.Field):")
-        code.append("\t\t\tpass")
-        for s in self.getAllExternalDataSlots("out"):
-            if s.connected():
-                if s.type == DataSlotType.Field:
-                    code.append("\t\t\tif objectID == '%s':" % s.name)
-                    code.append("\t\t\t\tself.%s = obj" % s.code_name)
+            code.append("\t\t\t")
+            code.append("\t\t# in case of Field")
+            code.append("\t\tif isinstance(obj, mupif.Field.Field):")
+            code.append("\t\t\tpass")
+            for s in self.getAllExternalDataSlots("out"):
+                if s.connected():
+                    if s.type == DataSlotType.Field:
+                        code.append("\t\t\tif objectID == '%s':" % s.name)
+                        code.append("\t\t\t\tself.%s = obj" % s.code_name)
 
-        code.append("\t\t\t")
-        code.append("\t\t# in case of Function")
-        code.append("\t\tif isinstance(obj, mupif.Function.Function):")
-        code.append("\t\t\tpass")
-        for s in self.getAllExternalDataSlots("out"):
-            if s.connected():
-                if s.type == DataSlotType.Function:
-                    code.append("\t\t\tif objectID == '%s':" % s.name)
-                    code.append("\t\t\t\tself.%s = obj" % s.code_name)
+            code.append("\t\t\t")
+            code.append("\t\t# in case of Function")
+            code.append("\t\tif isinstance(obj, mupif.Function.Function):")
+            code.append("\t\t\tpass")
+            for s in self.getAllExternalDataSlots("out"):
+                if s.connected():
+                    if s.type == DataSlotType.Function:
+                        code.append("\t\t\tif objectID == '%s':" % s.name)
+                        code.append("\t\t\t\tself.%s = obj" % s.code_name)
+
+            #
+            #
+            # get method
+
+            code.append("\t")
+            code.append("\t# set method for all external inputs")
+            code.append("\tdef get(self, objectType, time=None, objectID=0):")
+            code.append("\t\t\t")
+            code.append("\t\t# in case of Property")
+            code.append("\t\tif isinstance(objectType, mupif.propertyID.PropertyID):")
+            code.append("\t\t\tpass")
+            for s in self.getAllExternalDataSlots("in"):
+                if s.connected():
+                    if s.type == DataSlotType.Property:
+                        code.append("\t\t\tif objectID == '%s':" % s.name)
+                        code.append("\t\t\t\treturn self.%s" %
+                                    s.getLinkedDataSlot().owner.generateOutputDataSlotGetFunction(s.getLinkedDataSlot(),
+                                                                                                  'time'))
+
+            code.append("\t\t\t")
+            code.append("\t\t# in case of Field")
+            code.append("\t\tif isinstance(objectType, mupif.fieldID.FieldID):")
+            code.append("\t\t\tpass")
+            for s in self.getAllExternalDataSlots("in"):
+                if s.connected():
+                    if s.type == DataSlotType.Field:
+                        code.append("\t\t\tif objectID == '%s':" % s.name)
+                        code.append("\t\t\t\treturn self.%s" %
+                                    s.getLinkedDataSlot().owner.generateOutputDataSlotGetFunction(s.getLinkedDataSlot(),
+                                                                                                  'time'))
+
+            code.append("\t\t\t")
+            code.append("\t\t# in case of Function")
+            code.append("\t\tif isinstance(objectType, mupif.functionID.FunctionID):")
+            code.append("\t\t\tpass")
+            for s in self.getAllExternalDataSlots("in"):
+                if s.connected():
+                    if s.type == DataSlotType.Function:
+                        code.append("\t\t\tif objectID == '%s':" % s.name)
+                        code.append("\t\t\t\treturn self.%s" %
+                                    s.getLinkedDataSlot().owner.generateOutputDataSlotGetFunction(s.getLinkedDataSlot(),
+                                                                                                  'time'))
+            code.append("\t\t")
+            code.append("\t\treturn None")
 
         # terminate
 
         code.append("\t")
         code.append("\tdef terminate(self):")
         for model in all_model_blocks:
-            if(isinstance(model, ModelBlock)):
+            if isinstance(model, ModelBlock):
                 code.append("\t\tself.%s.terminate()" % model.code_name)
         code.append("\t")
 
@@ -896,7 +940,7 @@ class WorkflowBlock(SequentialBlock):
             code.append("\tdef solve(self, runInBackground=False):")
 
         for model in child_blocks:
-            code.extend(model.generateExecutionCode(2))
+            code.extend(model.generateExecutionCode(2, "tstep.getTime()"))
 
         if not class_code:
             code.append("\t\tself.terminate()")
@@ -909,6 +953,8 @@ class WorkflowBlock(SequentialBlock):
         if not class_code:
             code.append("problem = %s()" % workflow_classname)
             code.append("problem.solve()")
+            code.append("")
+            code.append("print('Simulation has finished.')")
             code.append("")
             code.append("")
 
@@ -1539,6 +1585,7 @@ class TimeLoopBlock(SequentialBlock):
         SequentialBlock.__init__(self, parent, workflow)
         self.addDataSlot(InputDataSlot(self, "start_time", DataSlotType.PhysicalQuantity, False))
         self.addDataSlot(InputDataSlot(self, "target_time", DataSlotType.PhysicalQuantity, False))
+        self.fillColor = QtGui.QColor(255, 255, 153)
 
     def getStartTime(self):
         connected_slot = self.getDataSlotWithName("start_time").getLinkedDataSlot()
@@ -1564,7 +1611,7 @@ class TimeLoopBlock(SequentialBlock):
         var_time_step = "%s_time_step" % self.code_name
         var_time_step_number = "%s_time_step_number" % self.code_name
 
-        code.append("timeUnits = mupif.Physics.PhysicalQuantities.PhysicalUnit('s',   1.,    [0, 0, 1, 0, 0, 0, 0, 0, 0])")
+        code.append("timeUnits = mupif.Physics.PhysicalQuantities.PhysicalUnit('s', 1., [0, 0, 1, 0, 0, 0, 0, 0, 0])")
         # code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
         #     var_time, self.getStartTime()))
         # code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
@@ -1581,14 +1628,14 @@ class TimeLoopBlock(SequentialBlock):
 
         code.append("\t%s += 1" % var_time_step_number)
 
-        dt_code = "\t%s = min(" % var_dt
+        dt_code = "\t%s = min([" % var_dt
         first = True
         for model in self.getChildExecutionBlocks(ModelBlock):
             if not first:
                 dt_code += ", "
             dt_code += "self.%s.getCriticalTimeStep()" % model.code_name
             first = False
-        dt_code += ")"
+        dt_code += "])"
 
         while_code.append("")
         while_code.append(dt_code)
