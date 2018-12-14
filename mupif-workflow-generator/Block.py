@@ -167,8 +167,12 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def generateOutputDataSlotGetFunction(self, slot, time=''):
         if slot in self.getDataSlots(OutputDataSlot):
-            return "self.%s.get(%s, %s, %d)" % (self.code_name, slot.obj_type, time, slot.obj_id)
-        return ""
+            if isinstance(slot.obj_id, str):
+                obj_id = "'%s'" % slot.obj_id
+            else:
+                obj_id = str(slot.obj_id)
+            return "self.%s.get(%s, %s, %s)" % (self.code_name, slot.obj_type, time, obj_id)
+        return "None"
 
     def getChildItems(self):
         return self.childItems()
@@ -490,6 +494,8 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
             is_parent_block = False
         if isinstance(self, CustomPythonCodeBlock):
             is_parent_block = False
+        if isinstance(self, CustomNameVariableBlock):
+            is_parent_block = False
         if is_parent_block:
             self.addMenuItems_AddStandardBlock(menu)
             self.addMenuItems_AddModelBlock(menu)
@@ -633,10 +639,12 @@ class WorkflowBlock(SequentialBlock):
         self.name = "WorkflowBlock"
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.widget = parent
+        self.workflow_name = "MyProblemClassWorkflow"
 
         ExecutionBlock.list_of_block_classes = []
-        ExecutionBlock.list_of_block_classes.extend([TimeLoopBlock, FloatVariableBlock, CustomPythonCodeBlock, IfElseBlock])
+        ExecutionBlock.list_of_block_classes.extend([TimeLoopBlock, FloatVariableBlock, CustomPythonCodeBlock])
         ExecutionBlock.list_of_block_classes.extend([ConstantPropertyBlock, ConstantPhysicalQuantityBlock])
+        ExecutionBlock.list_of_block_classes.extend([IfElseBlock, CustomNameVariableBlock])
 
     def getScene(self):
         return self.loc_scene
@@ -676,7 +684,8 @@ class WorkflowBlock(SequentialBlock):
             print("importing %s" % e['classname'])
 
             if e['classname'] == 'ExternalInputDataSlot':
-                new_ds = ExternalInputDataSlot(self, e['name'], DataSlotType.getTypeFromName(e['type']))
+                new_ds = ExternalInputDataSlot(self, e['name'], DataSlotType.getTypeFromName(e['type']), True, None,
+                                               e['obj_type'], e['obj_id'])
                 new_ds.uuid = e['uuid']
                 self.addDataSlot(new_ds)
 
@@ -759,7 +768,7 @@ class WorkflowBlock(SequentialBlock):
 
     def generateWorkflowCode(self, class_code):
         if class_code:
-            workflow_classname = "MyProblemClassWorkflow"
+            workflow_classname = self.workflow_name
         else:
             workflow_classname = "MyProblemExecutionWorkflow"
 
@@ -789,9 +798,10 @@ class WorkflowBlock(SequentialBlock):
             code_add = ""
             for s in self.getAllExternalDataSlots("out"):
                 if s.connected():
-                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s', 'obj_type': '%s'" % (
-                        s.name, DataSlotType.getNameFromType(s.type), False, "",
-                        s.getLinkedDataSlot().obj_type)
+                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s', 'obj_type': '%s', " \
+                             "'obj_id': '%s'" % (
+                                s.name, DataSlotType.getNameFromType(s.type), False, "",
+                                s.getLinkedDataSlot().obj_type, s.obj_id)
 
                     if code_add != "":
                         code_add = "%s, " % code_add
@@ -802,9 +812,10 @@ class WorkflowBlock(SequentialBlock):
             code_add = ""
             for s in self.getAllExternalDataSlots("in"):
                 if s.connected():
-                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s', 'obj_type': '%s'" % (
-                        s.name, DataSlotType.getNameFromType(s.type), True, "",
-                        s.getLinkedDataSlot().obj_type)
+                    params = "'name': '%s', 'type': '%s', 'optional': %s, 'description': '%s', 'obj_type': '%s', " \
+                             "'obj_id': '%s'" % (
+                                s.name, DataSlotType.getNameFromType(s.type), True, "",
+                                s.getLinkedDataSlot().obj_type, s.obj_id)
 
                     if code_add != "":
                         code_add = "%s, " % code_add
@@ -905,7 +916,7 @@ class WorkflowBlock(SequentialBlock):
                 if s.connected():
                     if s.type == DataSlotType.Field:
                         code.append("\t\t\tif objectID == '%s':" % s.name)
-                        code.append("\t\t\t\treturn self.%s" %
+                        code.append("\t\t\t\treturn %s" %
                                     s.getLinkedDataSlot().owner.generateOutputDataSlotGetFunction(s.getLinkedDataSlot(),
                                                                                                   'time'))
 
@@ -943,6 +954,8 @@ class WorkflowBlock(SequentialBlock):
             code.extend(model.generateExecutionCode(2, "tstep.getTime()"))
 
         if not class_code:
+            code.append("")
+            code.append("\t\t# terminate all models")
             code.append("\t\tself.terminate()")
             code.append("")
 
@@ -1132,15 +1145,18 @@ class ConstantPropertyBlock(VariableBlock):
     def getDictForJSON(self):
         answer = ExecutionBlock.getDictForJSON(self)
         answer.update({'value': self.value})
-        answer.update({'propID': self.propID})
-        answer.update({'valueType': self.valueType})
+        answer.update({'propID': str(self.propID)})
+        answer.update({'valueType': str(self.valueType)})
         answer.update({'units': self.units})
-        answer.update({'objectID': self.objectID})
+        answer.update({'objectID': str(self.objectID)})
         return answer
 
     def initializeFromJSONData(self, json_data):
         ExecutionBlock.initializeFromJSONData(self, json_data)
-        self.setValue(json_data['value'])
+        t = ()
+        for e in json_data['value']:
+            t = t + (float(e),)
+        self.setValue(t)
         self.setPropertyID(json_data['propID'])
         self.setValueType(json_data['valueType'])
         self.setUnits(json_data['units'])
@@ -1198,7 +1214,7 @@ class ConstantPropertyBlock(VariableBlock):
             dw = temp.width()
             dh = temp.height()
             temp.setGeometry(200, 200, dw, dh)
-            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter new value", "New value")
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Enter new value", "")
             if ok_pressed:
                 t = ()
                 for e in new_value.split(' '):
@@ -1501,7 +1517,14 @@ class ModelBlock(ExecutionBlock):
     def getDictForJSON(self):
         answer = ExecutionBlock.getDictForJSON(self)
         answer.update({'model_classname': self.name})
+        answer.update({'model_input_file_name': self.input_file_name})
+        answer.update({'model_input_file_directory': self.input_file_directory})
         return answer
+
+    def initializeFromJSONData(self, json_data):
+        ExecutionBlock.initializeFromJSONData(self, json_data)
+        self.input_file_name = json_data['model_input_file_name']
+        self.input_file_directory = json_data['model_input_file_directory']
 
     def constructFromModelMetaData(self, model):
         if model.hasMetadata('name') and model.hasMetadata('inputs') and model.hasMetadata('outputs'):
@@ -1585,19 +1608,26 @@ class TimeLoopBlock(SequentialBlock):
         SequentialBlock.__init__(self, parent, workflow)
         self.addDataSlot(InputDataSlot(self, "start_time", DataSlotType.PhysicalQuantity, False))
         self.addDataSlot(InputDataSlot(self, "target_time", DataSlotType.PhysicalQuantity, False))
+        self.addDataSlot(InputDataSlot(self, "max_dt", DataSlotType.PhysicalQuantity, True))
         self.fillColor = QtGui.QColor(255, 255, 153)
 
     def getStartTime(self):
         connected_slot = self.getDataSlotWithName("start_time").getLinkedDataSlot()
         if connected_slot:
             return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
-        return "0."  # TODO call ERROR
+        return None
 
     def getTargetTime(self):
         connected_slot = self.getDataSlotWithName("target_time").getLinkedDataSlot()
         if connected_slot:
             return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
-        return "0."  # TODO call ERROR
+        return None
+
+    def getMaxDt(self):
+        connected_slot = self.getDataSlotWithName("max_dt").getLinkedDataSlot()
+        if connected_slot:
+            return connected_slot.owner.generateOutputDataSlotGetFunction(connected_slot)
+        return None
 
     def generateInitCode(self, indent=0):
         return []
@@ -1611,11 +1641,7 @@ class TimeLoopBlock(SequentialBlock):
         var_time_step = "%s_time_step" % self.code_name
         var_time_step_number = "%s_time_step_number" % self.code_name
 
-        code.append("timeUnits = mupif.Physics.PhysicalQuantities.PhysicalUnit('s', 1., [0, 0, 1, 0, 0, 0, 0, 0, 0])")
-        # code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
-        #     var_time, self.getStartTime()))
-        # code.append("%s = mupif.Physics.PhysicalQuantities.PhysicalQuantity(%s, timeUnits)" % (
-        #     var_target_time, self.getTargetTime()))
+        code.append("time_units = mupif.Physics.PhysicalQuantities.PhysicalUnit('s', 1., [0, 0, 1, 0, 0, 0, 0, 0, 0])")
 
         code.append("%s = %s" % (var_time, self.getStartTime()))
         code.append("%s = %s" % (var_target_time, self.getTargetTime()))
@@ -1630,6 +1656,11 @@ class TimeLoopBlock(SequentialBlock):
 
         dt_code = "\t%s = min([" % var_dt
         first = True
+
+        if self.getMaxDt():
+            dt_code += self.getMaxDt()
+            first = False
+
         for model in self.getChildExecutionBlocks(ModelBlock):
             if not first:
                 dt_code += ", "
@@ -1642,7 +1673,7 @@ class TimeLoopBlock(SequentialBlock):
         while_code.append("\t%s = min(%s+%s, %s)" % (var_time, var_time, var_dt, var_target_time))
         while_code.append("")
 
-        while_code.append("\tif %s.inUnitsOf(timeUnits).getValue() + 1.e-6 > %s.inUnitsOf(timeUnits).getValue():" % (
+        while_code.append("\tif %s.inUnitsOf(time_units).getValue() + 1.e-6 > %s.inUnitsOf(time_units).getValue():" % (
             var_time, var_target_time))
         while_code.append("\t\t%s = False" % var_compute)
 
@@ -1762,6 +1793,60 @@ class CustomPythonCodeBlock(ExecutionBlock):
     def initializeFromJSONData(self, json_data):
         ExecutionBlock.initializeFromJSONData(self, json_data)
         self.setCodeLines(json_data['code_lines'])
+
+
+class CustomNameVariableBlock(ExecutionBlock):
+    def __init__(self, parent, workflow):
+        ExecutionBlock.__init__(self, parent, workflow)
+        self.addDataSlot(InputDataSlot(self, "value", DataSlotType.Field, True))
+        self.custom_name = ""
+        self.updateLabel()
+
+    def updateLabel(self):
+        self.label.setText("var_name = '%s'" % self.custom_name)
+
+    def generateCodeName(self, base_name='custom_name_variable_'):
+        if self.custom_name != "":
+            if self.custom_name not in self.workflow.getAllElementCodeNames():
+                self.code_name = self.custom_name
+                return
+        ExecutionBlock.generateCodeName(self, base_name)
+
+    def addLocalMenuItems(self, menu):
+        def _set_custom_name():
+            temp = QtWidgets.QInputDialog()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Set variable name", "", QtWidgets.QLineEdit.Normal, self.custom_name)
+            if ok_pressed:
+                self.custom_name = new_value
+                self.updateLabel()
+
+        action = menu.addAction("Set variable name")
+        action.triggered.connect(_set_custom_name)
+
+    def addMenuItems(self, menu):
+        ExecutionBlock.addMenuItems(self, menu)
+        self.addLocalMenuItems(menu)
+
+    def generateInitCode(self, indent=0):
+        if self.getDataSlotWithName("value").connected():
+            code = ExecutionBlock.generateInitCode(self)
+            code.append("self.%s = None  # its value will be defined later by its execution code" % self.code_name)
+            return push_indents_before_each_line(code, indent)
+        return []
+
+    def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
+        code = ExecutionBlock.generateExecutionCode(self)
+
+        for slot in self.getDataSlots(InputDataSlot):
+            linked_slot = slot.getLinkedDataSlot()
+            if linked_slot:
+                code.append("self.%s = %s" % (
+                    self.code_name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot, time)))
+
+        return push_indents_before_each_line(code, indent)
 
 
 class IfElseBlock(ExecutionBlock):

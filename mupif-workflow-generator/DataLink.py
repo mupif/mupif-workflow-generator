@@ -28,7 +28,6 @@ from PyQt5 import QtWidgets
 import uuid
 import helpers
 from exceptions import DuplicateKnobNameError, KnobConnectionError
-import json
 import os
 from enum import Enum
 
@@ -430,7 +429,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
         def _rename():
             temp = QtWidgets.QInputDialog()
-            new_name, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Change name of the slot", "New name")
+            new_name, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Change name of the slot", "", text=self.name)
             if ok_pressed:
                 self.rename(new_name)
                 self.owner.callUpdatePositionOfWholeWorkflow()
@@ -476,6 +475,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
     def getDictForJSON(self):
         answer = {'classname': self.__class__.__name__, 'uuid': self.uuid, 'parent_uuid': self.getParentUUID()}
         answer.update({'name': self.name, 'type': "%s" % DataSlotType.getNameFromType(self.type)})
+        answer.update({'obj_id': self.obj_id, 'obj_type': "%s" % self.obj_type})
         return answer
 
     def getLinkedDataSlot(self):
@@ -521,6 +521,7 @@ class OutputDataSlot (DataSlot):
 class ExternalInputDataSlot(InputDataSlot):
     def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
         InputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
+        self.obj_id = self.name
 
     def generateCodeName(self, base_name='external_output_'):
         i = 0
@@ -531,10 +532,15 @@ class ExternalInputDataSlot(InputDataSlot):
                 self.code_name = new_name
                 return
 
+    def rename(self, val):
+        DataSlot.rename(self, val)
+        self.obj_id = self.name
+
 
 class ExternalOutputDataSlot(OutputDataSlot):
     def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
         OutputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
+        self.obj_id = self.name
 
     def generateCodeName(self, base_name='external_input_'):
         i = 0
@@ -544,6 +550,10 @@ class ExternalOutputDataSlot(OutputDataSlot):
             if new_name not in self.owner.getAllElementCodeNames():
                 self.code_name = new_name
                 return
+
+    def rename(self, val):
+        DataSlot.rename(self, val)
+        self.obj_id = self.name
 
 
 class DataLink(QtWidgets.QGraphicsPathItem):
