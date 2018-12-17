@@ -1506,9 +1506,9 @@ class ModelBlock(ExecutionBlock):
         for slot in self.getDataSlots(InputDataSlot):
             linked_slot = slot.getLinkedDataSlot()
             if linked_slot:
-                code.append("self.%s.set(%s, %d)" % (
+                code.append("self.%s.set(%s, %s)" % (
                     self.code_name, linked_slot.owner.generateOutputDataSlotGetFunction(linked_slot, time),
-                    slot.obj_id))
+                    "'%s'" % slot.obj_id if isinstance(slot.obj_id, str) else str(slot.obj_id)))
 
         code.append("self.%s.solveStep(%s)" % (self.code_name, timestep))
 

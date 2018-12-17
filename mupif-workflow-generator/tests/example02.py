@@ -1,20 +1,22 @@
-from example01_models import *
+from example02_models import *
 from Application import *
 
 if __name__ == '__main__':
 
-    ModelBlock.loadModelsFromGivenFile("example01_models.py")
+    ModelBlock.loadModelsFromGivenFile("example02_models.py")
 
     application = Application()
     workflow = application.getWorkflowBlock()
 
-    var1 = FloatVariableBlock(workflow, workflow)
-    var1.setValue(0.5)
-    workflow.addExecutionBlock(var1)
+    cfq1 = ConstantPhysicalQuantityBlock(workflow, workflow)
+    cfq1.setValue(0.)
+    cfq1.setUnits('s')
+    workflow.addExecutionBlock(cfq1)
 
-    var2 = FloatVariableBlock(workflow, workflow)
-    var2.setValue(10.0)
-    workflow.addExecutionBlock(var2)
+    cfq2 = ConstantPhysicalQuantityBlock(workflow, workflow)
+    cfq2.setValue(5.)
+    cfq2.setUnits('s')
+    workflow.addExecutionBlock(cfq2)
 
     timeloop = TimeLoopBlock(workflow, workflow)
 
@@ -37,8 +39,8 @@ if __name__ == '__main__':
 
     model1.getDataSlotWithName("ASTField").connectTo(model2.getDataSlotWithName("ASTField"))
     model2.getDataSlotWithName("TemperatureField").connectTo(model3.getDataSlotWithName("TemperatureField"))
-    # var1.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("start_time"))
-    # var2.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("target_time"))
+    cfq1.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("start_time"))
+    cfq2.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("target_time"))
 
     application.run()
 
