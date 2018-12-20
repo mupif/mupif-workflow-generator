@@ -1,11 +1,9 @@
 """Window class."""
 import sys
-from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
-import DataLink
-import Block
-import GraphWidget
+from . import Block
+from . import GraphWidget
 import os
 import json
 

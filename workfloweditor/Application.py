@@ -1,12 +1,6 @@
-"""Window class."""
-import sys
-from PyQt5 import QtGui
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
-from DataLink import *
-from Block import *
-from Window import *
-from GraphWidget import *
+"""Application class."""
+from .Window import *
+from .GraphWidget import *
 
 
 class Application:

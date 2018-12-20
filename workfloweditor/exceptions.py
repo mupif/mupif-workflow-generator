@@ -18,4 +18,4 @@ class KnobConnectionError(QtNodesError):
 
 
 class DuplicateKnobNameError(QtNodesError):
-	"""A Node's Knobs must have unique names."""
+    """A Node's Knobs must have unique names."""

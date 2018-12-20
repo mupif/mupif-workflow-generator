@@ -2,8 +2,8 @@
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
-import DataLink
-import Block
+from . import DataLink
+from . import Block
 
 
 CURRENT_ZOOM = 1.0

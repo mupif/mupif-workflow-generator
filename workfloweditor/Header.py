@@ -1,12 +1,8 @@
 """Node header."""
-
-# import Qt
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
-
-# import helpers
-from helpers import getTextSize
+from .helpers import getTextSize
 
 
 class Header(QtWidgets.QGraphicsItem):
