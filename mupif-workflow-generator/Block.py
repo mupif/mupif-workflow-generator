@@ -123,7 +123,7 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
 
     def updateLabel(self):
         """
-        Updates the block's label according to the block's properties.
+        Updates the block's label according to block's properties.
         """
 
     @staticmethod
@@ -138,34 +138,53 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         return -1
 
     def generateInitCode(self, indent=0):
-        """Generate initialization block code"""
+        """
+        Returns list of strings with initialization code lines.
+        :param int indent:
+        :return:
+        :rtype: str[]
+        """
         code = ["", "# initialization code of %s (%s)" % (self.code_name, self.name)]
         return push_indents_before_each_line(code, indent)
 
     def generateExecutionCode(self, indent=0, time='', timestep='tstep'):
-        """returns tuple containing strings with code lines"""
+        """
+        Returns list of strings with execution code lines.
+        :param int indent:
+        :param str time:
+        :param str timestep:
+        :return:
+        :rtype: str[]
+        """
         code = ["", "# execution code of %s (%s)" % (self.code_name, self.name)]
         return push_indents_before_each_line(code, indent)
 
-    def generateBlockInputs(self):
-        input_slots = self.getDataSlots(InputDataSlot)
-        # print ("Slots: ",input_slots)
-        code = []
-        # generate input code for each block input
-        for iSlot in input_slots:
-            # try to locate corresponding dataLink
-            # print (iLink)
-            if len(iSlot.dataLinks) == 0 and not iSlot.optional:
-                # raise AttributeError("No input link for slot detected")
-                code.append("# No input for slot %s detected" % iSlot.name)
-            elif len(iSlot.dataLinks) > 1:
-                raise AttributeError("Multiple input links for slot detected")
-            else:
-                source = iSlot.dataLinks[0]
-                code.append("%s.set(name=%s, value=%s)" % (self.name, iSlot.name, source))
-        return code
+    # def generateBlockInputs(self):
+    #     input_slots = self.getDataSlots(InputDataSlot)
+    #     # print ("Slots: ",input_slots)
+    #     code = []
+    #     # generate input code for each block input
+    #     for iSlot in input_slots:
+    #         # try to locate corresponding dataLink
+    #         # print (iLink)
+    #         if len(iSlot.dataLinks) == 0 and not iSlot.optional:
+    #             # raise AttributeError("No input link for slot detected")
+    #             code.append("# No input for slot %s detected" % iSlot.name)
+    #         elif len(iSlot.dataLinks) > 1:
+    #             raise AttributeError("Multiple input links for slot detected")
+    #         else:
+    #             source = iSlot.dataLinks[0]
+    #             code.append("%s.set(name=%s, value=%s)" % (self.name, iSlot.name, source))
+    #     return code
 
     def generateOutputDataSlotGetFunction(self, slot, time=''):
+        """
+        Returns code of get function for given dataslot.
+        :param DataSlot slot:
+        :param str time:
+        :return:
+        :rtype: str
+        """
         if slot in self.getDataSlots(OutputDataSlot):
             if isinstance(slot.obj_id, str):
                 obj_id = "'%s'" % slot.obj_id
@@ -175,6 +194,11 @@ class ExecutionBlock (QtWidgets.QGraphicsWidget):
         return "None"
 
     def getChildItems(self):
+        """
+
+        :return:
+        :rtype: list
+        """
         return self.childItems()
 
     def updateHeaderText(self, val=None):
@@ -653,7 +677,7 @@ class WorkflowBlock(SequentialBlock):
         """
 
         :return: Returns datalinks of the whole workflow.
-        :rtype DataLink[]
+        :rtype: DataLink[]
         """
         answer = []
         for block in self.getChildExecutionBlocks(None, True):
@@ -1081,7 +1105,7 @@ class FloatVariableBlock(VariableBlock):
         Generates the initialization code of this block.
         :param int indent: number of indents to be added before each line
         :return: array of code lines
-        :rtype str[]
+        :rtype: str[]
         """
         if self.getDataSlotWithName("value").connected():
             code = ExecutionBlock.generateInitCode(self)
@@ -1170,7 +1194,7 @@ class ConstantPropertyBlock(VariableBlock):
         Generates the initialization code of this block.
         :param int indent: number of indents to be added before each line
         :return: array of code lines
-        :rtype str[]
+        :rtype: str[]
         """
         if self.getDataSlotWithName("value").connected():
             code = ExecutionBlock.generateInitCode(self)
@@ -1372,7 +1396,7 @@ class ConstantPhysicalQuantityBlock(VariableBlock):
         Generates the initialization code of this block.
         :param int indent: number of indents to be added before each line
         :return: array of code lines
-        :rtype str[]
+        :rtype: str[]
         """
         if self.getDataSlotWithName("value").connected():
             code = ExecutionBlock.generateInitCode(self)
@@ -1491,7 +1515,7 @@ class ModelBlock(ExecutionBlock):
         Generates the initialization code of this block.
         :param int indent: number of indents to be added before each line
         :return: array of code lines
-        :rtype str[]
+        :rtype: str[]
         """
         code = ExecutionBlock.generateInitCode(self)
         input_file_add = ""
@@ -1695,6 +1719,12 @@ class TimeLoopBlock(SequentialBlock):
 
 
 def linesToText(lines):
+    """
+
+    :param str[] lines:
+    :return:
+    :rtype: str
+    """
     text = ""
     for line in lines:
         text = "%s\n%s" % (text, line)

@@ -173,6 +173,11 @@ class DataSlot(QtWidgets.QGraphicsItem):
         return "DataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
 
     def getNeededWidth(self):
+        """
+
+        :return:
+        :rtype: int
+        """
         return helpers.getTextSize(self.displayName).width()+self.spacing+self.w
 
     def setTotalWidth(self, val):
@@ -196,9 +201,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
         else:
             self.fillColor = self.fillColor_regular
 
-    def node(self):
-        """The Node that this Slot belongs to is its parent item."""
-        return self.parentItem()
+    # def node(self):
+    #     """The Node that this Slot belongs to is its parent item."""
+    #     return self.parentItem()
 
     def connectTo(self, target):
         """Convenience method to connect this to another DataSlot.
