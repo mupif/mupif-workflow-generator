@@ -1,0 +1,39 @@
+import mupif
+
+
+class field_export_to_VTK(mupif.Application.Application):
+    def __init__(self):
+        mupif.Application.Application.__init__(self)
+        self.field = None
+        self.step_number = 0
+        self.filename_base = "VTKField"
+        self.metadata.update({'name': 'field_export_to_VTK', 'type': '',
+                              'inputs': [
+                                  {'name': 'field', 'type': 'Field', 'optional': True,
+                                   'obj_type': 'mupif.FieldID.FID_Temperature', 'obj_id': 0}
+                              ],
+                              'outputs': []})
+
+    def setField(self, field, objectID=0):
+        """
+
+        :param mupif.Field.Field field:
+        :param objectID:
+        :return:
+        """
+        self.field = field
+
+    def solveStep(self, tstep, stageID=0, runInBackground=False):
+        if self.field:
+            if not self.step_number:
+                if self.field.fieldID == mupif.FieldID.FID_Temperature:
+                    self.filename_base = "VTKField_Temperature"
+                if self.field.fieldID == mupif.FieldID.FID_Displacement:
+                    self.filename_base = "VTKField_Displacement"
+
+            self.step_number += 1
+            self.field.field2VTKData().tofile('%s_%d' % (self.filename_base, self.step_number))
+
+    def getCriticalTimeStep(self):
+        return mupif.Physics.PhysicalQuantities.PhysicalQuantity(1000.0, 's')
+
