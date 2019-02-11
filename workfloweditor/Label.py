@@ -6,12 +6,12 @@ from . import helpers
 
 class Label(QtWidgets.QGraphicsItem):
     """"""
-    def __init__(self, owner, text='', parent=None, **kwargs):
+    def __init__(self, parent_block, text='', parent=None, **kwargs):
         QtWidgets.QGraphicsItem.__init__(self, parent)
         self.text = ""
         self.lines = []
-        self.owner = owner
-        self.setParentItem(self.owner)
+        self.parent_block = parent_block
+        self.setParentItem(self.parent_block)
 
         self.line_h = 14
 
@@ -28,7 +28,7 @@ class Label(QtWidgets.QGraphicsItem):
         self.setText(text, initialization=True)
 
     def __repr__(self):
-        return "Label (%s.label: '%s')" % (self.owner.name, self.text)
+        return "Label (%s.label: '%s')" % (self.parent_block.name, self.text)
 
     def getWidth(self):
         return self.w*len(self.lines)
@@ -65,7 +65,7 @@ class Label(QtWidgets.QGraphicsItem):
         self.lines = self.text.split('\n')
         self.h = self.line_h*len(self.lines)
         if not initialization:
-            self.owner.callUpdatePositionOfWholeWorkflow()
+            self.parent_block.callUpdatePositionOfWholeWorkflow()
 
     def getNeededWidth(self):
         max_width = 0

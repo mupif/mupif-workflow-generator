@@ -93,15 +93,15 @@ class GraphView(QtWidgets.QGraphicsView):
             self.setCursor(QtCore.Qt.ArrowCursor)
         super(GraphView, self).mouseReleaseEvent(event)
 
-    def wheelEvent(self, event):
-        positive = event.delta() >= 0
-        zoom = self.zoomStep if positive else 1.0 / self.zoomStep
-        self.scale(zoom, zoom)
-
-        # Assuming we always scale x and y proportionally, expose the
-        # current horizontal scaling factor so other items can use it.
-        global CURRENT_ZOOM
-        CURRENT_ZOOM = self.transform().m11()
+    # def wheelEvent(self, event):
+    #     positive = event.delta() >= 0
+    #     zoom = self.zoomStep if positive else 1.0 / self.zoomStep
+    #     self.scale(zoom, zoom)
+    #
+    #     # Assuming we always scale x and y proportionally, expose the
+    #     # current horizontal scaling factor so other items can use it.
+    #     global CURRENT_ZOOM
+    #     CURRENT_ZOOM = self.transform().m11()
 
     def drawBackground(self, painter, rect):
         painter.setBrush(QtGui.QBrush(self.fillColor))

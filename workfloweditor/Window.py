@@ -231,9 +231,9 @@ class Window(QtWidgets.QMainWindow):
         self.apis_menu.addAction(apis_action_load_from_file)
 
         self.apis_list_of_models = self.apis_menu.addMenu('List of available APIs')
-        for api in Block.ExecutionBlock.list_of_models:
-            action = QtWidgets.QAction(api.__name__, self)
-            self.apis_list_of_models.addAction(action)
+        # for api in Block.ExecutionBlock.list_of_models:
+        #     action = QtWidgets.QAction(api.__name__, self)
+        #     self.apis_list_of_models.addAction(action)
 
         self.show()
 

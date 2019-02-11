@@ -22,8 +22,9 @@ class GraphWidget (QtWidgets.QWidget):
         self.window = parent
         self.scene = QtWidgets.QGraphicsScene()
         self.view.setScene(self.scene)
-        self.workflow = Block.WorkflowBlock(self, self.scene)
-        self.addNode(self.workflow)
+        # self.workflow = Block.BlockVisual(None, None, self.scene, self)
+        self.workflow = None
+        # self.addNode(self.workflow)
 
         # self.layout = QtWidgets.QVBoxLayout()
 
@@ -57,16 +58,17 @@ class GraphWidget (QtWidgets.QWidget):
 
         # Delete selected nodes.
         if event.key() == QtCore.Qt.Key_Delete:
-            selectedNodes = [i for i in self.scene.selectedItems()
-                             if isinstance(i, Block.ExecutionBlock)]
-            for node in selectedNodes:
-                node.destroy()
+            # selectedNodes = [i for i in self.scene.selectedItems()
+            #                  if isinstance(i, Block.ExecutionBlock)]
+            # for node in selectedNodes:
+            #     node.destroy()
+            pass
 
         super(GraphWidget, self).keyPressEvent(event)
 
     def addWorkflowBlock(self):
         if not self.workflow:
-            self.workflow = Block.WorkflowBlock(self, self.scene)
+            self.workflow = Block.BlockVisual(self, self.scene)
             self.addNode(self.workflow)
             return self.workflow
         return None
@@ -132,7 +134,7 @@ class GraphWidget (QtWidgets.QWidget):
 
     def getNodeById(self, uuid):
         """Return Node that matches the given uuid string."""
-        nodes = [i for i in self.scene.items() if isinstance(i, Block.ExecutionBlock)]
+        nodes = [i for i in self.scene.items() if isinstance(i, Block.BlockVisual)]
         for node in nodes:
             if node.uuid == uuid:
                 return node

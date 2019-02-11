@@ -1,3 +1,4 @@
+import workflowgenerator
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
@@ -11,88 +12,22 @@ windows = os.name == "nt"
 DELETE_MODIFIER_KEY = QtCore.Qt.AltModifier if windows else QtCore.Qt.ControlModifier
 
 
-"""
- data structure for workflow editor
-
- The execution model is based on idea of combining ExecucutionBlocks
- Each block represents specific action or procedure and it is responsible
- for generating its code.
- The execution blocks can be composed/contain other blocks
- (an example is a time loop block, which contains blocks to be executed
-  within a time loop)
- Each execution block can define its input and output slots, basically
- representing input and output parameters of particular block.
- The input/output slots can be connected using DataLink objects.
-
-"""
-
-
-class DataSlotType(Enum):
-    Unknown = 0
-
-    Property = 1
-    Field = 2
-    Function = 3
-
-    PhysicalQuantity = 5
-
-    Int = 11
-    Double = 12
-    String = 13
-
-    Scalar = 111
-
-    @staticmethod
-    def getTypeFromName(val):
-        for t in DataSlotType:
-            if t.name == val:
-                return t
-        return None
-
-    @staticmethod
-    def getNameFromType(val):
-        for t in DataSlotType:
-            if t == val:
-                return t.name
-        return None
-
-
-class DataProvider:
-    def __init__(self):
-        """Constructor"""
-
-    def get(self, slot=None):
-        """Returns the value associated with DataSlot"""
-        return None
-
-    def getOutputSlots(self):
-        """Returns a list of output DataSlots"""
-        return []
-
-
-class DataConsumer:
-    def __init__(self):
-        """Constructor"""
-
-    def set(self, value, slot=None):
-        """sets the value associated with DataSlot"""
-        return
-
-    def getInputSlots(self):
-        """Returns list of input DataSlots"""
-        return []
-
-
-# Currently only affects Knob label placement.
-FLOW_LEFT_TO_RIGHT = "flow_left_to_right"
-FLOW_RIGHT_TO_LEFT = "flow_right_to_left"
-
-
 class DataSlot(QtWidgets.QGraphicsItem):
     """
     Class describing input/output parameter of block
     """
-    def __init__(self, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0, **kwargs):
+    def __init__(self, slot_real, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0, uid=None):
+        """
+        :param workflowgenerator.DataSlot.DataSlot slot_real:
+        :param Block.Block owner:
+        :param str name:
+        :param workflowgenerator.DataSlot.DataSlotType type:
+        :param optional:
+        :param Block.Block parent:
+        :param obj_type:
+        :param obj_id:
+        :param str or None uid:
+        """
         QtWidgets.QGraphicsItem.__init__(self, parent)
         self.name = name
         self.owner = owner
@@ -102,6 +37,8 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.obj_type = obj_type
         self.obj_id = obj_id
 
+        self.slot_real = slot_real
+
         self.code_name = ""
 
         if isinstance(self, OutputDataSlot):
@@ -110,7 +47,10 @@ class DataSlot(QtWidgets.QGraphicsItem):
             self.optional = True
             self.external = True
 
-        self.uuid = str(uuid.uuid4())
+        if uid:
+            self.uid = uid
+        else:
+            self.uid = str(uuid.uuid4())
 
         self.dataLinks = []  # data
         self.hover = False
@@ -123,7 +63,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
         self.w_tot = self.w
         self.spacing = 5
-        self.flow = FLOW_LEFT_TO_RIGHT
 
         self.maxConnections = -1  # A negative value means 'unlimited'.
         if isinstance(self, InputDataSlot):
@@ -146,12 +85,16 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.setAcceptHoverEvents(True)
 
     def __repr__(self):
-        return "DataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
+        return "DataSlot (%s.%s %s)" % (self.getParentBlock(), self.name, self.type)
+
+    def getRealSlot(self):
+        """
+        :rtype: workflowgenerator.DataSlot.DataSlot
+        """
+        return self.slot_real
 
     def getNeededWidth(self):
         """
-
-        :return:
         :rtype: int
         """
         return helpers.getTextSize(self.displayName).width()+self.spacing+self.w
@@ -160,7 +103,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.w_tot = val
 
     def updateDisplayName(self):
-        self.displayName = "%s (%s)" % (self.name, DataSlotType.getNameFromType(self.type))
+        self.displayName = "%s (%s)" % (self.name, workflowgenerator.DataSlot.DataSlotType.getNameFromType(self.type))
         self.owner.callUpdatePositionOfWholeWorkflow()
 
     def setType(self, val):
@@ -264,8 +207,8 @@ class DataSlot(QtWidgets.QGraphicsItem):
         if data_link in scene.items():
             scene.removeItem(data_link)
 
-    def setUUID(self, uuid):
-        self.uuid = uuid
+    def setUUID(self, uid):
+        self.uid = uid
 
     def boundingRect(self):
         """Return the bounding box of this element."""
@@ -449,13 +392,13 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def getParentUUID(self):
         if self.parentItem():
-            return self.parentItem().uuid
+            return self.parentItem().uid
         else:
             return None
 
     def getDictForJSON(self):
-        answer = {'classname': self.__class__.__name__, 'uuid': self.uuid, 'parent_uuid': self.getParentUUID()}
-        answer.update({'name': self.name, 'type': "%s" % DataSlotType.getNameFromType(self.type)})
+        answer = {'classname': self.__class__.__name__, 'uuid': self.uid, 'parent_uuid': self.getParentUUID()}
+        answer.update({'name': self.name, 'type': "%s" % workflowgenerator.DataSlot.DataSlotType.getNameFromType(self.type)})
         answer.update({'obj_id': self.obj_id, 'obj_type': "%s" % self.obj_type})
         return answer
 
@@ -476,42 +419,68 @@ class DataSlot(QtWidgets.QGraphicsItem):
     def getCodeRepresentation(self):
         return "self.%s" % self.code_name
 
+    def getParentBlock(self):
+        """
+        :rtype: Block.BlockVisual
+        """
+        return self.owner
+
 
 class InputDataSlot (DataSlot):
-    """
-    Class describing input/output parameter of block
-    """
-    def __init__(self, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0):
-        DataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
+
+    def __init__(self, slot_real, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0, uid=None):
+        """
+        :param workflowgenerator.DataSlot.DataSlot slot_real:
+        :param Block.Block owner:
+        :param str name:
+        :param type:
+        :param optional:
+        :param Block.Block parent:
+        :param obj_type:
+        :param obj_id:
+        :param kwargs:
+        """
+        DataSlot.__init__(self, slot_real, owner, name, type, optional, parent, obj_type, obj_id, uid)
 
     def __repr__(self):
-        return "InputDataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
+        return "InputDataSlot (%s.%s %s)" % (self.getParentBlock(), self.name, self.type)
 
 
 class OutputDataSlot (DataSlot):
-    """
-    Class describing input/output parameter of block
-    """
-    def __init__(self, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0):
-        DataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
+
+    def __init__(self, slot_real, owner, name, type, optional=False, parent=None, obj_type=None, obj_id=0, uid=None):
+        """
+        :param workflowgenerator.DataSlot.DataSlot slot_real:
+        :param Block.Block owner:
+        :param str name:
+        :param type:
+        :param optional:
+        :param Block.Block parent:
+        :param obj_type:
+        :param obj_id:
+        :param str or None uid:
+        """
+        DataSlot.__init__(self, slot_real, owner, name, type, optional, parent, obj_type, obj_id, uid)
 
     def __repr__(self):
-        return "OutputDataSlot (%s.%s %s)" % (self.owner.name, self.name, self.type)
+        return "OutputDataSlot (%s.%s %s)" % (self.getParentBlock(), self.name, self.type)
 
 
 class ExternalInputDataSlot(InputDataSlot):
-    def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
-        InputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
+    def __init__(self, slot_real, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0, uid=None):
+        """
+        :param workflowgenerator.DataSlot.DataSlot slot_real:
+        :param Block.Block owner:
+        :param str name:
+        :param type:
+        :param optional:
+        :param Block.Block parent:
+        :param obj_type:
+        :param obj_id:
+        :param str or None uid:
+        """
+        InputDataSlot.__init__(self, slot_real, owner, name, type, optional, parent, obj_type, obj_id, uid)
         self.obj_id = self.name
-
-    def generateCodeName(self, base_name='external_output_'):
-        i = 0
-        while True:
-            i += 1
-            new_name = "%s%d" % (base_name, i)
-            if new_name not in self.owner.getAllElementCodeNames():
-                self.code_name = new_name
-                return
 
     def rename(self, val):
         DataSlot.rename(self, val)
@@ -519,18 +488,20 @@ class ExternalInputDataSlot(InputDataSlot):
 
 
 class ExternalOutputDataSlot(OutputDataSlot):
-    def __init__(self, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0):
-        OutputDataSlot.__init__(self, owner, name, type, optional, parent, obj_type, obj_id)
+    def __init__(self, slot_real, owner, name, type, optional=True, parent=None, obj_type=None, obj_id=0, uid=None):
+        """
+        :param workflowgenerator.DataSlot.DataSlot slot_real:
+        :param Block.Block owner:
+        :param str name:
+        :param type:
+        :param optional:
+        :param Block.Block parent:
+        :param obj_type:
+        :param obj_id:
+        :param str or None uid:
+        """
+        OutputDataSlot.__init__(self, slot_real, owner, name, type, optional, parent, obj_type, obj_id, uid)
         self.obj_id = self.name
-
-    def generateCodeName(self, base_name='external_input_'):
-        i = 0
-        while True:
-            i += 1
-            new_name = "%s%d" % (base_name, i)
-            if new_name not in self.owner.getAllElementCodeNames():
-                self.code_name = new_name
-                return
 
     def rename(self, val):
         DataSlot.rename(self, val)
