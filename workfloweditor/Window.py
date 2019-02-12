@@ -2,8 +2,8 @@
 import sys
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
-from . import Block
 from . import GraphWidget
+from . import Application
 import os
 import json
 
@@ -38,10 +38,11 @@ class Window(QtWidgets.QMainWindow):
         main_menu = self.menuBar()
 
         def _new_blank_workflow():
-            self.widget.clearScene()
+            self.getApplication().getRealWorkflow().deleteAllItems()
+            self.getApplication().reGenerateAll()
 
         def _save_to_json_file():
-            json_code = self.widget.workflow.convertToJSON()
+            json_code = self.getApplication().getRealWorkflow().convertToJSON()
             overall_json = {'elements': json_code}
             json_to_be_saved = json.dumps(overall_json)
             file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -67,9 +68,7 @@ class Window(QtWidgets.QMainWindow):
                 json_loaded = f.read()
                 f.close()
                 json_data = json.loads(json_loaded)
-
-                self.widget.clearScene()
-                self.widget.workflow.loadFromJSON(json_data)
+                # self.getApplication().getRealWorkflow()
 
         def _load_models():
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -79,7 +78,7 @@ class Window(QtWidgets.QMainWindow):
                 "Python File (*.py)"
             )
             if file_path:
-                Block.ModelBlock.loadModelsFromGivenFile(file_path)
+                self.getApplication().getRealWorkflow().loadModelsFromGivenFile(file_path)
                 self.updateMenuListOfAPI()
 
         def formatCodeToText(code, level=-1):
@@ -91,14 +90,8 @@ class Window(QtWidgets.QMainWindow):
                     text_code += formatCodeToText(line, level + 1)
             return text_code
 
-        def printCode(code, level=-1):
-            print(formatCodeToText(code, level))
-
         def _generate_class_code():
-            if self.widget.workflow.checkConsistency(execution=False):
-                code = self.widget.workflow.getClassCode()
-                # temporary printing into console
-                print("\nClass code:\n\n%s" % formatCodeToText(code))
+            if self.getApplication().getRealWorkflow().checkConsistency(execution=False):
                 # saving into file
                 file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
                     self,
@@ -107,9 +100,7 @@ class Window(QtWidgets.QMainWindow):
                     "Python File (*.py)"
                 )
                 if file_path:
-                    f = open(file_path, "w")
-                    f.write(formatCodeToText(code))
-                    f.close()
+                    self.getApplication().getRealWorkflow().saveClassCodeToFile(file_path)
             else:
                 print("Workflow.checkConsistency() returned False")
                 QtWidgets.QMessageBox.about(self, "Workflow consistency error",
@@ -117,8 +108,8 @@ class Window(QtWidgets.QMainWindow):
                                             "DataSlots are connected.")
 
         def _show_class_code():
-            if self.widget.workflow.checkConsistency(execution=False):
-                code = self.widget.workflow.getClassCode()
+            if self.getApplication().getRealWorkflow().checkConsistency(execution=False):
+                code = self.getApplication().getRealWorkflow().generateClassCode()
                 self.code_editor = QtWidgets.QTextEdit()
                 for line in code:
                     self.code_editor.append(line)
@@ -132,10 +123,7 @@ class Window(QtWidgets.QMainWindow):
                                             "DataSlots are connected.")
 
         def _generate_execution_code():
-            if self.widget.workflow.checkConsistency(execution=True):
-                code = self.widget.workflow.getExecutionCode()
-                # temporary printing into console
-                print("\nExecution code:\n\n%s" % formatCodeToText(code))
+            if self.getApplication().getRealWorkflow().checkConsistency(execution=True):
                 # saving into file
                 file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
                     self,
@@ -144,9 +132,7 @@ class Window(QtWidgets.QMainWindow):
                     "Python File (*.py)"
                 )
                 if file_path:
-                    f = open(file_path, "w")
-                    f.write(formatCodeToText(code))
-                    f.close()
+                    self.getApplication().getRealWorkflow().saveExecutionCodeToFile(file_path)
             else:
                 print("Workflow.checkConsistency() returned False")
                 QtWidgets.QMessageBox.about(self, "Workflow consistency error",
@@ -155,8 +141,8 @@ class Window(QtWidgets.QMainWindow):
                                             "DataSlots.")
 
         def _show_execution_code():
-            if self.widget.workflow.checkConsistency(execution=True):
-                code = self.widget.workflow.getExecutionCode()
+            if self.getApplication().getRealWorkflow().checkConsistency(execution=True):
+                code = self.getApplication().getRealWorkflow().generateExecutionCode()
                 self.code_editor = QtWidgets.QTextEdit()
                 for line in code:
                     self.code_editor.append(line)
@@ -171,14 +157,11 @@ class Window(QtWidgets.QMainWindow):
                                             "DataSlots.")
 
         def _run_execution_code():
-            if self.widget.workflow.checkConsistency(execution=True):
-                code = self.widget.workflow.getExecutionCode()
-                temp_file = './temporary_execution_script.py'
-                f = open(temp_file, "w")
-                f.write(formatCodeToText(code))
-                f.close()
-                os.system("python3 %s" % temp_file)
-                os.remove(temp_file)
+            if self.getApplication().getRealWorkflow().checkConsistency(execution=True):
+                file_path = './temporary_execution_script.py'
+                self.getApplication().getRealWorkflow().saveExecutionCodeToFile(file_path)
+                os.system("python3 %s" % file_path)
+                os.remove(file_path)
             else:
                 print("Workflow.checkConsistency() returned False")
                 QtWidgets.QMessageBox.about(self, "Workflow consistency error",
@@ -231,21 +214,28 @@ class Window(QtWidgets.QMainWindow):
         self.apis_menu.addAction(apis_action_load_from_file)
 
         self.apis_list_of_models = self.apis_menu.addMenu('List of available APIs')
-        # for api in Block.ExecutionBlock.list_of_models:
-        #     action = QtWidgets.QAction(api.__name__, self)
-        #     self.apis_list_of_models.addAction(action)
+        for api in self.getApplication().getRealWorkflow().getListOfModels():
+            action = QtWidgets.QAction(api.__name__, self)
+            self.apis_list_of_models.addAction(action)
 
         self.show()
 
     def updateMenuListOfAPI(self):
         self.apis_list_of_models.clear()
-        for api in Block.ExecutionBlock.list_of_models:
+        for api in self.getApplication().getRealWorkflow().getListOfModels():
             action = QtWidgets.QAction(api.__name__, self)
             self.apis_list_of_models.addAction(action)
 
-    def close_application(self):
+    @staticmethod
+    def close_application():
         sys.exit()
 
     def resizeEvent(self, event):
         self.widget.setGeometry(5, 15, self.width() - 10, self.height() - 20)
+
+    def getApplication(self):
+        """
+        :rtype: Application.Application
+        """
+        return self.application
 

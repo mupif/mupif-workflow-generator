@@ -7,11 +7,10 @@ from . import Block
 
 class Application:
 
-    def __init__(self):
+    def __init__(self, workflow=None):
         self.app = QtWidgets.QApplication([])
+        self.workflow = workflow
         self.window = Window(self)
-
-        self.workflow = None
 
     def run(self):
         sys.exit(self.app.exec())
@@ -71,5 +70,3 @@ class Application:
 
         for real_block in block.getRealBlock().getBlocks():
             self.generateVisualBlockForRealBlock(real_block, block, block.workflow)
-
-        # block.generateChildItems()

@@ -75,3 +75,8 @@ class Label(QtWidgets.QGraphicsItem):
                 max_width = width
         return int(max_width)
 
+    def destroy(self):
+        """Remove this object from the scene and delete it."""
+        self.parent_block.scene.removeItem(self)
+        del self
+

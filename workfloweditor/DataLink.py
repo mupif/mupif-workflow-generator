@@ -93,6 +93,12 @@ class DataSlot(QtWidgets.QGraphicsItem):
         """
         return self.slot_real
 
+    def getUID(self):
+        """
+        :rtype: str
+        """
+        return self.getRealSlot().getUID()
+
     def getNeededWidth(self):
         """
         :rtype: int
@@ -333,14 +339,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def destroy(self):
         """Remove this Slot, its DataLinks and associations."""
-        print("destroy slot:", self)
         datalink_to_be_deleted = self.dataLinks[::]  # Avoid shrinking during deletion.
         for data_link in datalink_to_be_deleted:
             data_link.destroy()
-        # node = self.parentItem()
-        # if node:
-        #     node.removeSlot(self)
-
         self.scene().removeItem(self)
         del self
 

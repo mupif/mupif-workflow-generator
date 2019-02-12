@@ -10,7 +10,15 @@ from . import helpers
 
 class BlockVisual (QtWidgets.QGraphicsWidget):
 
-    def __init__(self, block_real, parent, workflow, widget, scene, **kwargs):
+    def __init__(self, block_real, parent, workflow, widget, scene):
+        """
+        :param workflowgenerator.Block.Block block_real:
+        :param Block.BlockVisual parent:
+        :param Block.BlockVisual workflow:
+        :param widget:
+        :param scene:
+        """
+        kwargs = {}
         QtWidgets.QGraphicsWidget.__init__(self, kwargs.get("parent", None))
 
         self.widget = widget
@@ -35,7 +43,6 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
         self.roundness = 0
         self.fillColor = QtGui.QColor(220, 220, 220)
 
-        self.label = Label.Label(self)
         self.labels = []
 
         self.header = Header.Header(self, self.block_real.getHeaderText())
@@ -105,22 +112,11 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
     def setPropertiesFromAnotherBlockOfSameType(self, block):
         """"""
 
-    def updateLabel(self):
-        """
-        Updates the block's label according to block's properties.
-        """
-
     def getChildItems(self):
         """
         :rtype: list
         """
         return self.childItems()
-
-    def updateHeaderText(self, val=None):
-        if val:
-            self.header.text = val
-        else:
-            self.header.text = self.name
 
     def getDataSlots(self, cls=None):
         """
@@ -143,7 +139,7 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
                 array.extend(block.getAllDataSlots(True))
         return array
 
-    def getDataSlotWithUUID(self, uid, recursive_search=False):
+    def getDataSlotWithUID(self, uid, recursive_search=False):
         for slot in self.getAllDataSlots(recursive_search):
             if slot.uid == uid:
                 return slot
@@ -165,13 +161,13 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
 
     def addDataSlot(self, slot):
         """
-        Add the given Slot to this Node.
+        Add the given Slot to this Block.
         A Slot must have a unique name, meaning there can be no duplicates within
         a Node (the displayNames are not constrained though).
         Assign ourselves as the slot's parent item (which also will put it onto
         the current scene, if not yet done) and adjust or size for it.
         The position of the slot is set relative to this Node and depends on it
-        either being an Input- or Output slot.
+        either being an Input or Output slot.
         """
         # TODO
         slot_names = [k.name for k in self.getDataSlots()]
@@ -242,7 +238,6 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
         return QtCore.QSizeF(self.w, self.h)
 
     def updateChildrenPosition(self):
-        # TODO
 
         self.header.setX(0)
         self.header.setY(0)
@@ -429,15 +424,13 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
         # TODO fix it
         self.header.destroy()
         self.button_menu.destroy()
-        for slot in self.getDataSlots():
+        for label in self.getLabels()[:]:
+            label.destroy()
+        for slot in self.getDataSlots()[:]:
             slot.destroy()
-        for block in self.getChildExecutionBlocks():
+        for block in self.getBlocks()[:]:
             block.destroy()
-
-        scene = self.scene
-        scene.removeItem(self)
-        self.getApplication().reGenerateAll()
-        self.callUpdatePositionOfWholeWorkflow()
+        self.scene.removeItem(self)
 
         del self
 
