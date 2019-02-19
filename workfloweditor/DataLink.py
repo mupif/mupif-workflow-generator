@@ -126,24 +126,10 @@ class DataSlot(QtWidgets.QGraphicsItem):
         else:
             self.fillColor = self.fillColor_regular
 
-    # def node(self):
-    #     """The Node that this Slot belongs to is its parent item."""
-    #     return self.parentItem()
-
     def connectTo(self, target):
-        """Convenience method to connect this to another DataSlot.
-
-        This creates an DataLink and directly connects it, in contrast to the mouse
-        events that first create an DataLink temporarily and only connect if the
-        user releases on a valid target Knob.
-        """
 
         if not isinstance(target, DataSlot):
             print("Ignoring connection to all element types except DataSlot and derived classes.")
-            return
-
-        if self.reachedMaxConnections() or target.reachedMaxConnections():
-            print("One of the slots can accept no more connections.")
             return
 
         if target is self:
@@ -154,23 +140,6 @@ class DataSlot(QtWidgets.QGraphicsItem):
                     isinstance(self, OutputDataSlot) and isinstance(target, InputDataSlot))):
             print("Only InputDataSlot and OutputDataSlot can be connected.")
             return
-
-        if self.external:
-            self.setType(target.type)
-        elif target.external:
-            target.setType(self.type)
-
-        if not self.type == target.type:
-            print("Two slots of different value types cannot be connected.")
-            return
-
-        new_conn = set([self, target])
-        for data_link in self.dataLinks:
-            existing_conn = set([data_link.source, data_link.target])
-            diff = existing_conn.difference(new_conn)
-            if not diff:
-                raise KnobConnectionError(
-                    "Connection already exists.")
 
         new_data_link = DataLink()
         new_data_link.source = self
@@ -301,21 +270,20 @@ class DataSlot(QtWidgets.QGraphicsItem):
     def mouseReleaseEvent(self, event):
         """Try to create DataLink."""
         if self.temp_data_link:
-            # print("trying to connect two knobs (block)")
             if event.button() == QtCore.Qt.LeftButton:
-                node = self.parentItem()
-                scene = node.scene()
+                block = self.parentItem()
                 x = event.scenePos().x()
                 y = event.scenePos().y()
                 qtr = QtGui.QTransform()
                 self.temp_data_link.destroy()
                 self.temp_data_link = None
-                target = scene.itemAt(x, y, qtr)
-                if target:
-                    self.connectTo(target)
-                    return
-
-                print("No target found.")
+                target = block.scene.itemAt(x, y, qtr)
+                if isinstance(target, DataSlot):
+                    self.getParentBlock().getRealBlock().getWorkflowBlock().connectSlotsWithUID(
+                        self.getUID(), target.getUID())
+                    self.getParentBlock().getApplication().reGenerateAll()
+                else:
+                    print("No DataSlot found.")
 
     def reachedMaxConnections(self):
         if self.maxConnections < 0:
@@ -422,7 +390,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def getParentBlock(self):
         """
-        :rtype: Block.BlockVisual
+        :rtype: workfloweditor.Block.BlockVisual
         """
         return self.owner
 

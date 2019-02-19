@@ -1,8 +1,8 @@
-"""Application class."""
 import workflowgenerator
-from .Window import *
+from . import Window
 from .GraphWidget import *
 from . import Block
+import sys
 
 
 class Application:
@@ -10,7 +10,7 @@ class Application:
     def __init__(self, workflow=None):
         self.app = QtWidgets.QApplication([])
         self.workflow = workflow
-        self.window = Window(self)
+        self.window = Window.Window(self)
 
     def run(self):
         sys.exit(self.app.exec())
@@ -22,22 +22,20 @@ class Application:
         return self.window.widget.addWorkflowBlock()
 
     def getWorkflowBlock(self):
-        """
-        :rtype: Block.BlockVisual
-        """
+        """:rtype: Block.BlockVisual"""
         return self.window.widget.getWorkflowBlock()
 
     def setRealWorkflow(self, workflow):
-        """
-        :param workflowgenerator.BlockWorkflow.BlockWorkflow workflow:
-        """
+        """:param workflowgenerator.BlockWorkflow.BlockWorkflow workflow:"""
         self.workflow = workflow
 
     def getRealWorkflow(self):
-        """
-        :rtype: workflowgenerator.BlockWorkflow.BlockWorkflow
-        """
+        """:rtype: workflowgenerator.BlockWorkflow.BlockWorkflow"""
         return self.workflow
+
+    def getWindow(self):
+        """:rtype: Window.Window"""
+        return self.window
 
     def clearAll(self):
         self.getWorkflowBlock().destroy()
@@ -46,7 +44,19 @@ class Application:
         workflow = self.generateVisualBlockForRealBlock(self.getRealWorkflow(), None, None)
         self.window.widget.workflow = workflow
         self.window.widget.addNode(self.window.widget.workflow)
-        self.generateChildItems(workflow)
+        self.generateChildItems(self.window.widget.workflow)
+        for dl in self.getRealWorkflow().getDataLinks():
+            slot_uids = dl.getSlotsUID()
+            slot1 = self.getWorkflowBlock().getDataSlotWithUID(slot_uids[0], True)
+            slot2 = self.getWorkflowBlock().getDataSlotWithUID(slot_uids[1], True)
+            if slot1 is not None and slot2 is not None:
+                slot1.connectTo(slot2)
+            else:
+                print("One or both slots to be connected were not found.")
+
+        self.getWindow().setFixedWidth(self.getWorkflowBlock().w + 32)
+
+        self.getRealWorkflow().printStructure()
 
     def reGenerateAll(self):
         self.clearAll()
@@ -64,9 +74,8 @@ class Application:
         return block_new
 
     def generateChildItems(self, block):
-        """
-        :param Block.BlockVisual block:
-        """
-
+        """:param Block.BlockVisual block:"""
         for real_block in block.getRealBlock().getBlocks():
             self.generateVisualBlockForRealBlock(real_block, block, block.workflow)
+        for sub_block in block.getBlocks():
+            self.generateChildItems(sub_block)

@@ -1,9 +1,9 @@
-"""Window class."""
 import sys
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 from . import GraphWidget
 from . import Application
+import workflowgenerator
 import os
 import json
 
@@ -222,7 +222,7 @@ class Window(QtWidgets.QMainWindow):
 
     def updateMenuListOfAPI(self):
         self.apis_list_of_models.clear()
-        for api in self.getApplication().getRealWorkflow().getListOfModels():
+        for api in workflowgenerator.BlockWorkflow.BlockWorkflow.getListOfModels():
             action = QtWidgets.QAction(api.__name__, self)
             self.apis_list_of_models.addAction(action)
 

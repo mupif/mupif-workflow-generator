@@ -141,7 +141,7 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
 
     def getDataSlotWithUID(self, uid, recursive_search=False):
         for slot in self.getAllDataSlots(recursive_search):
-            if slot.uid == uid:
+            if slot.getUID() == uid:
                 return slot
         return None
 
@@ -305,35 +305,35 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
 
         # set vertical position of all given elements
 
-        for key, value in self.getRealBlock().getVisualStructureItems().items():
-            if key == 'label':
+        for keyword in self.getRealBlock().getVisualStructureItems():
+            if keyword == 'label':
                 for elem in self.getLabels():
                     if elem not in printed_elems:
                         elem.y = current_height
                         current_height += elem.getHeight() + self.spacing
                         printed_elems.append(elem)
                         break
-            elif key == 'slot':
+            elif keyword == 'slot':
                 for elem in self.getDataSlots():
                     if elem not in printed_elems:
                         elem.setY(current_height)
                         current_height += elem.h + self.spacing
                         printed_elems.append(elem)
                         break
-            elif key == 'slots':
+            elif keyword == 'slots':
                 for elem in self.getDataSlots():
                     if elem not in printed_elems:
                         elem.setY(current_height)
                         current_height += elem.h + self.spacing
                         printed_elems.append(elem)
-            elif key == 'block':
+            elif keyword == 'block':
                 for elem in self.getChildExecutionBlocks():
                     if elem not in printed_elems:
                         elem.setY(current_height)
                         current_height += elem.h + self.spacing
                         printed_elems.append(elem)
                         break
-            elif key == 'blocks':
+            elif keyword == 'blocks':
                 for elem in self.getChildExecutionBlocks():
                     if elem not in printed_elems:
                         elem.setY(current_height)
@@ -434,94 +434,115 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
 
         del self
 
-    def addMenuItems_AddStandardBlock(self, menu):
-        sub_menu = menu.addMenu("Add standard block")
-
-        # def _addStandardBlock(idx):
-        #     new_block = ExecutionBlock.list_of_block_classes[idx](self, self.workflow)
-        #     self.addExecutionBlock(new_block)
-        #
-        # cls_id = 0
-        # for block_class in ExecutionBlock.list_of_block_classes:
-        #     add_model_block_action = sub_menu.addAction(block_class.__name__)
-        #     add_model_block_action.triggered.connect(lambda checked, idx=cls_id: _addStandardBlock(idx))
-        #     cls_id += 1
-
-    def addMenuItems_AddModelBlock(self, menu):
-        sub_menu = menu.addMenu("Add model block")
-
-        # def _addModelBlock(idx):
-        #     new_block_class = ExecutionBlock.list_of_models[idx]()
-        #     new_block = ModelBlock(self, self.workflow)
-        #     new_block.constructFromModelMetaData(new_block_class)
-        #     self.addExecutionBlock(new_block)
-        #
-        # cls_id = 0
-        # for model in ExecutionBlock.list_of_models:
-        #     add_model_block_action = sub_menu.addAction(model.__name__)
-        #     add_model_block_action.triggered.connect(lambda checked, idx=cls_id: _addModelBlock(idx))
-        #     cls_id += 1
-
-    def moveChildBlock(self, block, direction):
-        child_blocks = self.getChildExecutionBlocks()
-        block_id = -5
-        if block in child_blocks:
-            block_id = child_blocks.index(block)
-
-        if (direction == "up" and block_id > 0) or (direction == "down" and block_id < len(child_blocks)-1):
-            scene = self.scene
-            for block in child_blocks:
-                scene.removeItem(block)
-            idx = 0
-            for block in child_blocks:
-                if direction == "up" and idx == block_id-1:
-                    self.addExecutionBlock(child_blocks[block_id])
-                if not idx == block_id:
-                    self.addExecutionBlock(block)
-                if direction == "down" and idx == block_id + 1:
-                    self.addExecutionBlock(child_blocks[block_id])
-                idx += 1
-
-    def addMoveMenuActions(self, menu):
-        def _move_up():
-            self.parent.moveChildBlock(self, 'up')
-
-        def _move_down():
-            self.parent.moveChildBlock(self, 'down')
-
-        move_menu = menu.addMenu("Move")
-        move_up = move_menu.addAction("Up")
-        move_up.triggered.connect(_move_up)
-        move_down = move_menu.addAction("Down")
-        move_down.triggered.connect(_move_down)
-
-    def addDeleteMenuActions(self, menu):
-        def _delete():
-            self.destroy()
-
-        delete_menu = menu.addAction("Delete")
-        delete_menu.triggered.connect(_delete)
-
-    def addCommonMenuActionsForParentBlocks(self, menu):
-        pass
-
-    def addCloneAction(self, menu):
-        if self.clonable:
-            def _clone():
-                self.clone()
-
-            clone_menu = menu.addAction("Clone")
-            clone_menu.triggered.connect(_clone)
-
-    def addCommonMenuActions(self, menu):
-        if self.workflow is not self:
-            self.addMoveMenuActions(menu)
-            self.addDeleteMenuActions(menu)
-        self.addCommonMenuActionsForParentBlocks(menu)
-        self.addCloneAction(menu)
+    def getWorkflowBlock(self):
+        return self.workflow
 
     def addMenuItems(self, menu):
-        self.addCommonMenuActions(menu)
+        def _queryToWorkflowGenerator(uid, keyword, value):
+            self.getRealBlock().getWorkflowBlock().modificationQueryForItemWithUID(uid, keyword, value)
+            self.getApplication().reGenerateAll()
+
+        def _getTextValue(inp_caption):
+            """
+            :param str inp_caption:
+            :rtype: str or None
+            """
+            dialog_temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = dialog_temp.width()
+            dh = dialog_temp.height()
+            dialog_temp.setGeometry(200, 200, dw, dh)
+            new_value, ok_pressed = QtWidgets.QInputDialog.getText(dialog_temp, inp_caption, "")
+            if ok_pressed:
+                return new_value
+            return None
+
+        def _getIntValue(inp_caption):
+            """
+            :param str inp_caption:
+            :rtype: int or None
+            """
+            dialog_temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = dialog_temp.width()
+            dh = dialog_temp.height()
+            dialog_temp.setGeometry(200, 200, dw, dh)
+            new_value, ok_pressed = QtWidgets.QInputDialog.getInt(dialog_temp, inp_caption, "")
+            if ok_pressed:
+                return new_value
+            return None
+
+        def _getFloatValue(inp_caption):
+            """
+            :param str inp_caption:
+            :rtype: int or None
+            """
+            dialog_temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = dialog_temp.width()
+            dh = dialog_temp.height()
+            dialog_temp.setGeometry(200, 200, dw, dh)
+            new_value, ok_pressed = QtWidgets.QInputDialog.getDouble(dialog_temp, inp_caption, "")
+            if ok_pressed:
+                return new_value
+            return None
+
+        def _getSelectValue(inp_caption, inp_options):
+
+            selected_id = 0
+            # if str() in items:
+            #     selected_id = items.index(str(self.valueType))
+
+            temp = QtWidgets.QInputDialog()
+            px = self.workflow.widget.window.x()
+            py = self.workflow.widget.window.x()
+            dw = temp.width()
+            dh = temp.height()
+            temp.setGeometry(200, 200, dw, dh)
+            item, ok = QtWidgets.QInputDialog.getItem(temp, inp_caption, "", inp_options, selected_id, False)
+            if ok and item:
+                return item
+                # if item in items:
+                #     selected_id = items.index(item)
+                #     self.valueType = items_real[selected_id]
+                #     self.updateLabel()
+            return None
+
+        def _menuItemClick(uid, keyword, value, inp_type="", inp_caption="", inp_options=[]):
+            new_value = value
+            if inp_type == "str":
+                new_value = _getTextValue(inp_caption)
+            elif inp_type == "int":
+                new_value = _getIntValue(inp_caption)
+            elif inp_type == "float":
+                new_value = _getFloatValue(inp_caption)
+            elif inp_type == "select":
+                new_value = _getSelectValue(inp_caption, inp_options)
+
+            if new_value is not None:
+                _queryToWorkflowGenerator(uid, keyword, new_value)
+
+        def _generateMenu(menu, wg_menu):
+            """
+            :param menu:
+            :param workflowgenerator.VisualMenu.VisualMenu wg_menu:
+            """
+            for wg_submenu in wg_menu.getMenus():
+                sub_menu = menu.addMenu(wg_submenu.getName())
+                _generateMenu(sub_menu, wg_submenu)
+
+            for wg_item in wg_menu.getItems():
+                action = menu.addAction(wg_item.getText())
+                action.triggered.connect(
+                    lambda checked, uid=self.getUID(), keyword=wg_item.getKeyword(),
+                           value=wg_item.getValue(), i_type=wg_item.getInputType(),
+                           i_caption=wg_item.getInputCaption(), i_options=wg_item.getInputOptions():
+                    _menuItemClick(uid, keyword, value, i_type, i_caption, i_options))
+
+        _generateMenu(menu, self.getRealBlock().getMenu())
 
     def contextMenuEvent(self, event):
         self.showMenu()
@@ -553,23 +574,6 @@ class BlockVisual (QtWidgets.QGraphicsWidget):
             return_json_array.extend(elem.convertToJSON())
 
         return return_json_array
-
-    @staticmethod
-    def getListOfModelClassnames():
-        # array = [m.__name__ for m in ExecutionBlock.list_of_models]
-        # return array
-        return []
-
-    @staticmethod
-    def getListOfModelDependencies():
-        # return ExecutionBlock.list_of_model_dependencies
-        return []
-
-    @staticmethod
-    def getListOfStandardBlockClassnames():
-        # array = [m.__name__ for m in ExecutionBlock.list_of_block_classes]
-        # return array
-        return []
 
     def getScene(self):
         return self.widget.scene
