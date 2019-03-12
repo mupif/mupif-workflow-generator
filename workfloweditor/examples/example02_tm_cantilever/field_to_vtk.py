@@ -7,12 +7,15 @@ class field_export_to_VTK(mupif.Application.Application):
         self.field = None
         self.step_number = 0
         self.filename_base = "VTKField"
-        self.metadata.update({'name': 'field_export_to_VTK', 'type': '',
-                              'inputs': [
-                                  {'name': 'field', 'type': 'Field', 'optional': True,
-                                   'obj_type': 'mupif.FieldID.FID_Temperature', 'obj_id': 0}
+        self.metadata.update({'Name': 'field_export_to_VTK',
+                              'Input_types': [
+                                  {'Name': 'field', 'Type': 'Field', 'required': False,
+                                   'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 0}
                               ],
-                              'outputs': []})
+                              'Output_types': []})
+
+    def initialize(self, file='', workdir='', executionID='', metaData={}, validateMetaData=False, **kwargs):
+        pass
 
     def setField(self, field, objectID=0):
         """

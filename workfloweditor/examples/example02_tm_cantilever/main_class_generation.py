@@ -1,57 +1,73 @@
 import models
 import mupif
+import sys
+sys.path.append('../../..')
 import workfloweditor
+import workflowgenerator
 
 if __name__ == '__main__':
-    workfloweditor.Block.ModelBlock.loadModelsFromGivenFile("models.py")
 
-    application = workfloweditor.Application.Application()
-    application.window.setGeometry(400, 200, 500, 1020)
+    workflowgenerator.BlockWorkflow.BlockWorkflow.loadModelsFromGivenFile("models.py")
 
-    workflow = application.getWorkflowBlock()
+    workflow = workflowgenerator.BlockWorkflow.BlockWorkflow()
 
-    workflow.addDataSlot(workfloweditor.DataLink.ExternalInputDataSlot(workflow, 'temperature', workfloweditor.DataLink.DataSlotType.Field))
-    workflow.addDataSlot(workfloweditor.DataLink.ExternalInputDataSlot(workflow, 'displacement', workfloweditor.DataLink.DataSlotType.Field))
-    workflow.addDataSlot(workfloweditor.DataLink.ExternalOutputDataSlot(workflow, 'top_temperature', workfloweditor.DataLink.DataSlotType.Property))
+    workflow.addDataSlot(
+        workflowgenerator.DataSlot.ExternalInputDataSlot('temperature', workflowgenerator.DataSlot.DataSlotType.Field))
+    workflow.addDataSlot(
+        workflowgenerator.DataSlot.ExternalInputDataSlot('displacement', workflowgenerator.DataSlot.DataSlotType.Field))
+    workflow.addDataSlot(workflowgenerator.DataSlot.ExternalOutputDataSlot('top_temperature',
+                                                                           workflowgenerator.DataSlot.DataSlotType.Property))
 
-    property1 = workfloweditor.Block.ConstantPropertyBlock(workflow, workflow)
+    property1 = workflowgenerator.BlockConstProperty.BlockConstProperty()
     property1.setValue((0.,))
-    property1.setPropertyID(mupif.propertyID.PropertyID.PID_Temperature)
-    property1.setValueType(mupif.ValueType.ValueType.Scalar)
+    property1.setPropertyID(mupif.PropertyID.PID_Temperature)
+    property1.setValueType(mupif.ValueType.Scalar)
     property1.setUnits('degC')
-    workflow.addExecutionBlock(property1)
+    workflow.addBlock(property1)
 
-    property2 = workfloweditor.Block.ConstantPropertyBlock(workflow, workflow)
+    property2 = workflowgenerator.BlockConstProperty.BlockConstProperty()
     property2.setValue((0.,))
-    property2.setPropertyID(mupif.propertyID.PropertyID.PID_Temperature)
-    property2.setValueType(mupif.ValueType.ValueType.Scalar)
+    property2.setPropertyID(mupif.PropertyID.PID_Temperature)
+    property2.setValueType(mupif.ValueType.Scalar)
     property2.setUnits('degC')
-    workflow.addExecutionBlock(property2)
+    workflow.addBlock(property2)
 
     model_c_2 = models.thermal_nonstat()
     model_c_3 = models.mechanical()
 
-    model1 = workfloweditor.Block.ModelBlock(workflow, workflow)
-    model1.constructFromModelMetaData(model_c_2)
+    model1 = workflowgenerator.BlockModel.BlockModel(model_c_2)
+    model1.constructFromModelMetaData()
     model1.setInputFile('inputT13.in')
-    workflow.addExecutionBlock(model1)
+    workflow.addBlock(model1)
 
-    model2 = workfloweditor.Block.ModelBlock(workflow, workflow)
-    model2.constructFromModelMetaData(model_c_3)
+    model2 = workflowgenerator.BlockModel.BlockModel(model_c_3)
+    model2.constructFromModelMetaData()
     model2.setInputFile('inputM13.in')
-    workflow.addExecutionBlock(model2)
+    workflow.addBlock(model2)
 
     model1.getDataSlotWithName('temperature').connectTo(model2.getDataSlotWithName('temperature'))
+    model1.getDataSlotWithName('temperature').connectTo(workflow.getDataSlotWithName('temperature'))
+    model2.getDataSlotWithName('displacement').connectTo(workflow.getDataSlotWithName('displacement'))
 
-    model1.getDataSlotWithName('top edge temperature convection').connectTo(
+    model1.getDataSlotWithName('top edge temperature Cauchy').connectTo(
         workflow.getDataSlotWithName('top_temperature'))
+
     model1.getDataSlotWithName('bottom edge temperature Dirichlet').connectTo(
         property1.getDataSlotWithName('value'))
     model1.getDataSlotWithName('left edge temperature Dirichlet').connectTo(
         property2.getDataSlotWithName('value'))
 
-    model1.getDataSlotWithName('temperature').connectTo(workflow.getDataSlotWithName('temperature'))
-    model2.getDataSlotWithName('displacement').connectTo(workflow.getDataSlotWithName('displacement'))
+    print("\nWorkflowStructure:")
+    workflow.printStructure()
+    print("")
+
+    #
+
+    application = workfloweditor.Application.Application(workflow)
+    application.window.setGeometry(400, 200, 450, 850)
+    application.generateAll()
+
+    for block in application.getWorkflowBlock().getBlocks():
+        print(block)
 
     application.run()
-
