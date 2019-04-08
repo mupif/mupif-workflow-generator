@@ -2,5 +2,5 @@ This example has predefined structure for thermo-mechanical simulation.
 The model classes are in implemented in file models.py.
 File field_to_vtk.py includes basic model for easy export to VTK.
 
-First, run main_class_generation.py and save the class code as class_code.py.
-Then, run main_execution.py and run the execution code.
+First, run main_class_code_generation.py and save the class code as class_code.py.
+Then, run main_exec_code_generation.py and run the execution code.

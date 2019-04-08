@@ -36,26 +36,26 @@ class thermal(mupif.Model.Model):
                 'Description': 'Stationary heat conduction using finite elements on rectangular domain',
                 'Geometry': '2D rectangle',
                 'Boundary_conditions': 'Dirichlet, Neumann',
-                'Input_types': [
-                    {'Name': 'top edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 3},
-                    {'Name': 'top edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 13},
-                    {'Name': 'bottom edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 1},
-                    {'Name': 'bottom edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 11},
-                    {'Name': 'left edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 4},
-                    {'Name': 'left edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 14},
-                    {'Name': 'right edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 2},
-                    {'Name': 'right edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                     'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 12}
+                'Inputs': [
+                    {'Name': 'top edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 3},
+                    {'Name': 'top edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 13},
+                    {'Name': 'bottom edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 1},
+                    {'Name': 'bottom edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 11},
+                    {'Name': 'left edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 4},
+                    {'Name': 'left edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 14},
+                    {'Name': 'right edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 2},
+                    {'Name': 'right edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 12}
                 ],
-                'Output_types': [
-                    {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'Field',
+                'Outputs': [
+                    {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'mupif.Field',
                      'required': False}
                 ],
                 'Solver': {
@@ -96,8 +96,8 @@ class thermal(mupif.Model.Model):
         self.dirichletModelEdges = []
         self.convectionModelEdges = []
 
-    def initialize(self, file='', workdir='', executionID=None, metaData={}, validateMetaData=False, **kwargs):
-        super().initialize(file, workdir, executionID, metaData, validateMetaData, **kwargs)
+    def initialize(self, file='', workdir='', metaData={}, validateMetaData=False, **kwargs):
+        super().initialize(file, workdir, metaData, validateMetaData, **kwargs)
 
         if self.file != "":
             self.readInput()
@@ -591,26 +591,26 @@ class thermal_nonstat(thermal):
             'Representation': 'Finite volumes',
             'Geometry': '2D rectangle',
             'Boundary_conditions': 'Dirichlet, Neumann',
-            'Input_types': [
-                {'Name': 'top edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 3},
-                {'Name': 'top edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 13},
-                {'Name': 'bottom edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 1},
-                {'Name': 'bottom edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 11},
-                {'Name': 'left edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 4},
-                {'Name': 'left edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 14},
-                {'Name': 'right edge temperature Cauchy', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 2},
-                {'Name': 'right edge temperature Dirichlet', 'Type': 'Property', 'required': False,
-                 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 12}
+            'Inputs': [
+                {'Name': 'top edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 3},
+                {'Name': 'top edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 13},
+                {'Name': 'bottom edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 1},
+                {'Name': 'bottom edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 11},
+                {'Name': 'left edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 4},
+                {'Name': 'left edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 14},
+                {'Name': 'right edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 2},
+                {'Name': 'right edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
+                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 12}
             ],
-            'Output_types': [
-                {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'Field', 'required': False}
+            'Outputs': [
+                {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'mupif.Field', 'required': False}
             ],
             'Solver': {
                 'Software': 'own',
@@ -646,8 +646,8 @@ class thermal_nonstat(thermal):
         self.Tau = 0.5
         self.init = True
 
-    def initialize(self, file='', workdir='', executionID=None, metaData={}, validateMetaData=False, **kwargs):
-        super().initialize(file, workdir, executionID, metaData, validateMetaData, **kwargs)
+    def initialize(self, file='', workdir='', metaData={}, validateMetaData=False, **kwargs):
+        super().initialize(file, workdir, metaData, validateMetaData, **kwargs)
 
         if self.file != "":
             self.readInput(tria=True)
@@ -895,12 +895,12 @@ class mechanical(mupif.Model.Model):
             'Description': 'Plane stress problem with linear elastic thermo-elastic material',
             'Geometry': '2D rectangle',
             'Boundary_conditions': 'Dirichlet',
-            'Input_types': [
-                {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'Field', 'required': True}
+            'Inputs': [
+                {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'mupif.Field', 'required': True}
             ],
-            'Output_types': [
+            'Outputs': [
                 {'Name': 'displacement', 'Type_ID': 'mupif.FieldID.FID_Displacement',
-                 'Type': 'Field', 'required': False}
+                 'Type': 'mupif.Field', 'required': False}
             ],
             'Solver': {
                 'Software': 'own',
@@ -942,17 +942,8 @@ class mechanical(mupif.Model.Model):
         self.dirichletModelEdges = []
         self.loadModelEdges = []
 
-    def initialize(self, file='', workdir='', executionID=None, metaData={}, validateMetaData=False, **kwargs):
-        super().initialize(file, workdir, executionID, metaData, validateMetaData, **kwargs)
-
-        self.setMetadata('Inputs', [
-            {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'Field',
-             'required': True}
-        ])
-        self.setMetadata('Outputs', [{'Name': 'displacement', 'Type_ID': 'mupif.FieldID.FID_Displacement',
-                                      'Type': 'Field', 'required': False}])
-
-        # mupif.Model.Model.initialize(self, file, workdir, executionID, metaData, **kwargs)
+    def initialize(self, file='', workdir='', metaData={}, validateMetaData=False, **kwargs):
+        super().initialize(file, workdir, metaData, validateMetaData, **kwargs)
 
         if self.file != "":
             self.readInput()

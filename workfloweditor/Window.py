@@ -128,7 +128,7 @@ class Window(QtWidgets.QMainWindow):
                 file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
                     self,
                     "Save Python Execution Code to File",
-                    os.path.join(QtCore.QDir.currentPath(), "execution_code.py"),
+                    os.path.join(QtCore.QDir.currentPath(), "exec_code.py"),
                     "Python File (*.py)"
                 )
                 if file_path:

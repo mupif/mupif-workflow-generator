@@ -1,15 +1,23 @@
 import mupif
 import models
-import models
 
 
 class MyProblemClassWorkflow(mupif.Workflow.Workflow):
     
     def __init__(self):
-        mupif.Workflow.Workflow.__init__(self)
-        self.metadata.update({'Name': 'MyProblemClassWorkflow'})
-        self.metadata.update({'Inputs': [{'Name': 'top_temperature', 'Type': 'Property', 'optional': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 'top_temperature'}]})
-        self.metadata.update({'Outputs': [{'Name': 'temperature', 'Type': 'Field', 'optional': True, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 'temperature'}, {'Name': 'displacement', 'Type': 'Field', 'optional': True, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Displacement', 'Object_ID': 'displacement'}]})
+        metaData = {
+            'Inputs': [
+            ],
+            'Outputs': [
+            ],
+        }
+        mupif.Workflow.Workflow.__init__(self, metaData=metaData)
+        self.setMetadata('Name', 'MyProblemClassWorkflow')
+        self.setMetadata('ID', 'MyProblemClassWorkflow')
+        self.setMetadata('Description', '')
+        self.setMetadata('Model_refs_ID', [])
+        self.updateMetadata({'Inputs': [{'Name': 'top_temperature', 'Type': 'mupif.Property', 'required': True, 'description': '', 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 'top_temperature', 'ID': 0, 'Units': '', 'Required': True}]})
+        self.updateMetadata({'Outputs': [{'Name': 'temperature', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 'temperature', 'ID': 0, 'Units': '', 'Required': False}, {'Name': 'displacement', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Displacement', 'Object_ID': 'displacement', 'ID': 0, 'Units': '', 'Required': False}]})
     
         # initialization code of external input
         self.external_input_1 = None
@@ -27,14 +35,23 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
         # __init__ code of model_2 (mechanical)
         self.model_2 = models.mechanical()
     
-    def initialize(self, file='', workdir='', executionID=None, metaData={}, **kwargs):
-        mupif.Workflow.Workflow.initialize(self, file, workdir, executionID, metaData, **kwargs)
+    def initialize(self, file='', workdir='', targetTime=mupif.Physics.PhysicalQuantities.PhysicalQuantity(0., 's'), metaData={}, validateMetaData=True, **kwargs):
         
-        # __init__ code of model_1 (thermal_nonstat)
-        self.model_1.initialize(file='inputT13.in', workdir='.')
+        mupif.Workflow.Workflow.initialize(self, file=file, workdir=workdir, targetTime=targetTime, metaData=metaData, validateMetaData=validateMetaData, **kwargs)
         
-        # __init__ code of model_2 (mechanical)
-        self.model_2.initialize(file='inputM13.in', workdir='.')
+        execMD = {
+            'Execution': {
+                'ID': self.getMetadata('Execution.ID'),
+                'Use_case_ID': self.getMetadata('Execution.Use_case_ID'),
+                'Task_ID': self.getMetadata('Execution.Task_ID')
+            }
+        }
+        
+        # initialization code of model_1 (thermal_nonstat)
+        self.model_1.initialize(file='inputT13.in', workdir='', metaData=execMD)
+        
+        # initialization code of model_2 (mechanical)
+        self.model_2.initialize(file='inputM13.in', workdir='', metaData=execMD)
     
     def getCriticalTimeStep(self):
         return min([self.model_1.getCriticalTimeStep(), self.model_2.getCriticalTimeStep()])
@@ -51,10 +68,6 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
         # in case of Field
         if isinstance(obj, mupif.Field.Field):
             pass
-            
-        # in case of Function
-        if isinstance(obj, mupif.Function.Function):
-            pass
     
     # get method for all external outputs
     def get(self, objectType, time=None, objectID=0):
@@ -70,10 +83,6 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
                 return self.model_1.get(mupif.FieldID.FID_Temperature, time, 0)
             if objectID == 'displacement':
                 return self.model_2.get(mupif.FieldID.FID_Displacement, time, 0)
-            
-        # in case of Function
-        if isinstance(objectType, mupif.FunctionID):
-            pass
         
         return None
     

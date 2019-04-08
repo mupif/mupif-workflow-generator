@@ -8,11 +8,11 @@ class field_export_to_VTK(mupif.Application.Application):
         self.step_number = 0
         self.filename_base = "VTKField"
         self.metadata.update({'Name': 'field_export_to_VTK',
-                              'Input_types': [
-                                  {'Name': 'field', 'Type': 'Field', 'required': False,
+                              'Inputs': [
+                                  {'Name': 'field', 'Type': 'mupif.Field', 'required': False,
                                    'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 0}
                               ],
-                              'Output_types': []})
+                              'Outputs': []})
 
     def initialize(self, file='', workdir='', executionID='', metaData={}, validateMetaData=False, **kwargs):
         pass

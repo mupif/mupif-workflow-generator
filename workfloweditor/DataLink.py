@@ -109,7 +109,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.w_tot = val
 
     def updateDisplayName(self):
-        self.displayName = "%s (%s)" % (self.name, workflowgenerator.DataSlot.DataSlotType.getNameFromType(self.type))
+        self.displayName = "%s (%s)" % (self.name, self.type)
         self.owner.callUpdatePositionOfWholeWorkflow()
 
     def setType(self, val):
@@ -367,7 +367,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
 
     def getDictForJSON(self):
         answer = {'classname': self.__class__.__name__, 'uuid': self.uid, 'parent_uuid': self.getParentUUID()}
-        answer.update({'name': self.name, 'type': "%s" % workflowgenerator.DataSlot.DataSlotType.getNameFromType(self.type)})
+        answer.update({'name': self.name, 'type': "%s" % self.type})
         answer.update({'obj_id': self.obj_id, 'obj_type': "%s" % self.obj_type})
         return answer
 

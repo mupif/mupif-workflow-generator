@@ -32,8 +32,8 @@ if __name__ == '__main__':
 
     property1 = workflowgenerator.BlockConstProperty.BlockConstProperty()
     property1.setValue((10.,))
-    property1.setPropertyID(mupif.PropertyID.PID_Temperature)
-    property1.setValueType(mupif.ValueType.Scalar)
+    property1.setPropertyID('mupif.PropertyID.PID_Temperature')
+    property1.setValueType('mupif.ValueType.Scalar')
     property1.setUnits('degC')
     workflow.addBlock(property1)
 
