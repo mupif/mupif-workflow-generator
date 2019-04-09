@@ -1,4 +1,3 @@
-import mupif
 import sys
 sys.path.append('../../..')
 import field_to_vtk

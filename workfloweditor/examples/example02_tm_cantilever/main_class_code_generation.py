@@ -1,5 +1,4 @@
 import models
-import mupif
 import sys
 sys.path.append('../../..')
 import workfloweditor
