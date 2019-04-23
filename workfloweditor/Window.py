@@ -68,7 +68,14 @@ class Window(QtWidgets.QMainWindow):
                 json_loaded = f.read()
                 f.close()
                 json_data = json.loads(json_loaded)
-                # self.getApplication().getRealWorkflow()
+                j_data = None
+                try:
+                    j_data = json_data['elements']
+                except KeyError:
+                    print("Wrong format of given JSON file.")
+                if j_data is not None:
+                    self.getApplication().getRealWorkflow().constructFromJSON(j_data)
+                    self.getApplication().reGenerateAll()
 
         def _load_models():
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
