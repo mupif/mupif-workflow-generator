@@ -86,7 +86,18 @@ class Window(QtWidgets.QMainWindow):
             )
             if file_path:
                 self.getApplication().getRealWorkflow().loadModelsFromGivenFile(file_path)
-                self.updateMenuListOfAPI()
+                self.updateMenuListOfAPIs()
+
+        def _load_custom_standard_blocks():
+            file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self,
+                "Open Python File",
+                os.path.join(QtCore.QDir.currentPath(), "block.py"),
+                "Python File (*.py)"
+            )
+            if file_path:
+                self.getApplication().getRealWorkflow().loadCustomStandardBlocksFromGivenFile(file_path)
+                self.updateMenuListOfBlocks()
 
         def formatCodeToText(code, level=-1):
             text_code = ""
@@ -215,11 +226,21 @@ class Window(QtWidgets.QMainWindow):
         workflow_menu.addAction(workflow_action_save_to_file)
         workflow_menu.addAction(workflow_action_load_from_file)
         #
+        self.blocks_menu = main_menu.addMenu('Blocks')
+        apis_action_load_custom_blocks_from_file = QtWidgets.QAction('Load custom Block from file', self)
+        apis_action_load_custom_blocks_from_file.triggered.connect(_load_custom_standard_blocks)
+        self.blocks_menu.addAction(apis_action_load_custom_blocks_from_file)
+        #
+        self.blocks_list_of_blocks = self.blocks_menu.addMenu('List of available Blocks')
+        for block in self.getApplication().getRealWorkflow().getListOfBlockClasses():
+            action = QtWidgets.QAction(block.__name__, self)
+            self.blocks_list_of_blocks.addAction(action)
+        #
         self.apis_menu = main_menu.addMenu('APIs')
         apis_action_load_from_file = QtWidgets.QAction('Load API from file', self)
         apis_action_load_from_file.triggered.connect(_load_models)
         self.apis_menu.addAction(apis_action_load_from_file)
-
+        #
         self.apis_list_of_models = self.apis_menu.addMenu('List of available APIs')
         for api in self.getApplication().getRealWorkflow().getListOfModels():
             action = QtWidgets.QAction(api.__name__, self)
@@ -227,11 +248,17 @@ class Window(QtWidgets.QMainWindow):
 
         self.show()
 
-    def updateMenuListOfAPI(self):
+    def updateMenuListOfAPIs(self):
         self.apis_list_of_models.clear()
         for api in workflowgenerator.BlockWorkflow.BlockWorkflow.getListOfModels():
             action = QtWidgets.QAction(api.__name__, self)
             self.apis_list_of_models.addAction(action)
+
+    def updateMenuListOfBlocks(self):
+        self.blocks_list_of_blocks.clear()
+        for block in workflowgenerator.BlockWorkflow.BlockWorkflow.getListOfBlockClasses():
+            action = QtWidgets.QAction(block.__name__, self)
+            self.blocks_list_of_blocks.addAction(action)
 
     @staticmethod
     def close_application():

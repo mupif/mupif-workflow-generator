@@ -4,18 +4,19 @@ import models
 
 class MyProblemClassWorkflow(mupif.Workflow.Workflow):
     
-    def __init__(self):
-        metaData = {
+    def __init__(self, metaData={}):
+        MD = {
             'Inputs': [
             ],
             'Outputs': [
             ],
         }
-        mupif.Workflow.Workflow.__init__(self, metaData=metaData)
+        mupif.Workflow.Workflow.__init__(self, metaData=MD)
         self.setMetadata('Name', 'MyProblemClassWorkflow')
         self.setMetadata('ID', 'MyProblemClassWorkflow')
         self.setMetadata('Description', '')
         self.setMetadata('Model_refs_ID', [])
+        self.updateMetadata(metaData)
         self.updateMetadata({'Inputs': [{'Name': 'top_temperature', 'Type': 'mupif.Property', 'required': True, 'description': '', 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 'top_temperature', 'ID': 0, 'Units': '', 'Required': True}]})
         self.updateMetadata({'Outputs': [{'Name': 'temperature', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 'temperature', 'ID': 0, 'Units': '', 'Required': False}, {'Name': 'displacement', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Displacement', 'Object_ID': 'displacement', 'ID': 0, 'Units': '', 'Required': False}]})
     
@@ -24,10 +25,10 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
         # It should be defined from outside using set() method.
         
         # __init__ code of constant_property_1 ()
-        self.constant_property_1 = mupif.Property.ConstantProperty((0.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, mupif.Physics.PhysicalQuantities._unit_table['degC'], None, 0)
+        self.constant_property_1 = mupif.Property.ConstantProperty((0.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, 'degC', None, 0)
         
         # __init__ code of constant_property_2 ()
-        self.constant_property_2 = mupif.Property.ConstantProperty((0.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, mupif.Physics.PhysicalQuantities._unit_table['degC'], None, 0)
+        self.constant_property_2 = mupif.Property.ConstantProperty((0.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, 'degC', None, 0)
         
         # __init__ code of model_1 (thermal_nonstat)
         self.model_1 = models.thermal_nonstat()

@@ -5,30 +5,31 @@ import field_to_vtk
 
 class MyProblemExecutionWorkflow(mupif.Workflow.Workflow):
     
-    def __init__(self):
-        metaData = {
+    def __init__(self, metaData={}):
+        MD = {
             'Inputs': [
             ],
             'Outputs': [
             ],
         }
-        mupif.Workflow.Workflow.__init__(self, metaData=metaData)
+        mupif.Workflow.Workflow.__init__(self, metaData=MD)
         self.setMetadata('Name', 'MyProblemExecutionWorkflow')
         self.setMetadata('ID', 'MyProblemExecutionWorkflow')
         self.setMetadata('Description', '')
         self.setMetadata('Model_refs_ID', [])
+        self.updateMetadata(metaData)
         
         # __init__ code of constant_physical_quantity_1 ()
-        self.constant_physical_quantity_1 = mupif.Physics.PhysicalQuantities.PhysicalQuantity(0.0, mupif.Physics.PhysicalQuantities._unit_table['s'])
+        self.constant_physical_quantity_1 = mupif.Physics.PhysicalQuantities.PhysicalQuantity(0.0, 's')
         
         # __init__ code of constant_physical_quantity_2 ()
-        self.constant_physical_quantity_2 = mupif.Physics.PhysicalQuantities.PhysicalQuantity(10.0, mupif.Physics.PhysicalQuantities._unit_table['s'])
+        self.constant_physical_quantity_2 = mupif.Physics.PhysicalQuantities.PhysicalQuantity(10.0, 's')
         
         # __init__ code of constant_physical_quantity_3 ()
-        self.constant_physical_quantity_3 = mupif.Physics.PhysicalQuantities.PhysicalQuantity(0.5, mupif.Physics.PhysicalQuantities._unit_table['s'])
+        self.constant_physical_quantity_3 = mupif.Physics.PhysicalQuantities.PhysicalQuantity(0.5, 's')
         
         # __init__ code of constant_property_1 ()
-        self.constant_property_1 = mupif.Property.ConstantProperty((10.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, mupif.Physics.PhysicalQuantities._unit_table['degC'], None, 0)
+        self.constant_property_1 = mupif.Property.ConstantProperty((10.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, 'degC', None, 0)
         
         # __init__ code of model_1 (MyProblemClassWorkflow)
         self.model_1 = class_code.MyProblemClassWorkflow()
