@@ -45,12 +45,12 @@ if __name__ == '__main__':
     model1.getDataSlotWithName('temperature').connectTo(workflow.getDataSlotWithName('temperature'))
     model2.getDataSlotWithName('displacement').connectTo(workflow.getDataSlotWithName('displacement'))
 
-    model1.getDataSlotWithName('top edge temperature Cauchy').connectTo(
+    model1.getDataSlotWithName('edge temperature Cauchy top').connectTo(
         workflow.getDataSlotWithName('top_temperature'))
 
-    model1.getDataSlotWithName('bottom edge temperature Dirichlet').connectTo(
+    model1.getDataSlotWithName('edge temperature Dirichlet bottom').connectTo(
         property1.getDataSlotWithName('value'))
-    model1.getDataSlotWithName('left edge temperature Dirichlet').connectTo(
+    model1.getDataSlotWithName('edge temperature Dirichlet left').connectTo(
         property2.getDataSlotWithName('value'))
 
     print("\nWorkflowStructure:")

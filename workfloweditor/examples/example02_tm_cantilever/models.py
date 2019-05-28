@@ -7,10 +7,10 @@ import numpy as np
 import time as timeTime
 import os
 import logging
-
-log = logging.getLogger('demo01_models')
-
 import mupif.Physics.PhysicalQuantities as PQ
+
+log = logging.getLogger('ex01_models')
+
 
 timeUnits = PQ.PhysicalUnit('s', 1., [0, 0, 1, 0, 0, 0, 0, 0, 0])
 
@@ -34,29 +34,34 @@ class thermal(mupif.Model.Model):
                 'Name': 'Stationary thermal problem',
                 'ID': 'Thermo-1',
                 'Description': 'Stationary heat conduction using finite elements on rectangular domain',
+                'Version_date': '1.0.0, Feb 2019',
                 'Geometry': '2D rectangle',
                 'Boundary_conditions': 'Dirichlet, Neumann',
                 'Inputs': [
-                    {'Name': 'top edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 3},
-                    {'Name': 'top edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 13},
-                    {'Name': 'bottom edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 1},
-                    {'Name': 'bottom edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 11},
-                    {'Name': 'left edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 4},
-                    {'Name': 'left edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 14},
-                    {'Name': 'right edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 2},
-                    {'Name': 'right edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                     'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 12}
+                    {
+                        'Name': 'edge temperature',
+                        'Type': 'mupif.Property',
+                        'required': False,
+                        'Type_ID': 'mupif.PropertyID.PID_Temperature',
+                        'Obj_ID': [
+                            'Cauchy top',
+                            'Cauchy bottom',
+                            'Cauchy left',
+                            'Cauchy right',
+                            'Dirichlet top',
+                            'Dirichlet bottom',
+                            'Dirichlet left',
+                            'Dirichlet right'
+                        ]
+                    }
                 ],
                 'Outputs': [
-                    {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'mupif.Field',
-                     'required': False}
+                    {
+                        'Name': 'temperature',
+                        'Type_ID': 'mupif.FieldID.FID_Temperature',
+                        'Type': 'mupif.Field',
+                        'required': False
+                    }
                 ],
                 'Solver': {
                     'Software': 'own',
@@ -87,14 +92,40 @@ class thermal(mupif.Model.Model):
                 }
             }
         super(thermal, self).__init__(metaData)
+        self.mesh = None
         self.morphologyType = None
-        self.conductivity = mupif.Property.ConstantProperty(1, mupif.PropertyID.PID_effective_conductivity,
-                                                            mupif.ValueType.Scalar, 'W/m/K')
+        self.conductivity = mupif.Property.ConstantProperty(
+            1.,
+            mupif.PropertyID.PID_effective_conductivity,
+            mupif.ValueType.Scalar,
+            'W/m/K'
+        )
         self.tria = False
 
         self.tria = False
         self.dirichletModelEdges = []
         self.convectionModelEdges = []
+
+        self.xl = None
+        self.yl = None
+        self.nx = None
+        self.ny = None
+
+        self.dirichletBCs = None
+        self.convectionBC = None
+
+        self.loc = None
+        self.neq = 0  # number of unknowns
+        self.pneq = 0  # number of prescribed equations (Dirichlet b.c.)
+
+        self.volume = 0.0
+        self.integral = 0.0
+
+        self.T = None
+        self.scaleInclusion = None
+        self.r = None
+        self.b = None
+        self.bp = None
 
     def initialize(self, file='', workdir='', metaData={}, validateMetaData=False, **kwargs):
         super().initialize(file, workdir, metaData, validateMetaData, **kwargs)
@@ -156,8 +187,8 @@ class thermal(mupif.Model.Model):
         # self.yl = 0.3
         # self.nx = 10 # number of elements in x direction
         # self.ny = 10 # number of elements in y direction
-        self.dx = self.xl / self.nx
-        self.dy = self.yl / self.ny
+        # self.dx = self.xl / self.nx
+        # self.dy = self.yl / self.ny
         self.mesh = meshgen.meshgen((0., 0.), (self.xl, self.yl), self.nx, self.ny, self.tria)
 
         #
@@ -178,10 +209,10 @@ class thermal(mupif.Model.Model):
                     self.dirichletBCs[i * (self.ny + 1)] = value
             elif ide == 2:
                 for i in range(self.ny + 1):
-                    self.dirichletBCs[(self.ny + 1) * (self.nx) + i] = value
+                    self.dirichletBCs[(self.ny + 1) * self.nx + i] = value
             elif ide == 3:
                 for i in range(self.nx + 1):
-                    self.dirichletBCs[self.ny + (self.ny + 1) * (i)] = value
+                    self.dirichletBCs[self.ny + (self.ny + 1) * i] = value
             elif ide == 4:
                 for i in range(self.ny + 1):
                     self.dirichletBCs[i] = value
@@ -247,7 +278,13 @@ class thermal(mupif.Model.Model):
                     values.append((0.,))
                 else:
                     values.append((self.T[self.loc[i]],))
-            return mupif.Field.Field(self.mesh, mupif.FieldID.FID_Temperature, mupif.ValueType.Scalar, 'C', time, values)
+            return mupif.Field.Field(
+                self.mesh, mupif.FieldID.FID_Temperature,
+                mupif.ValueType.Scalar,
+                'C',
+                time,
+                values
+            )
         elif fieldID == mupif.FieldID.FID_Material_number:
             values = []
             for e in self.mesh.cells():
@@ -256,8 +293,15 @@ class thermal(mupif.Model.Model):
                 else:
                     values.append((0,))
             # print (values)
-            return mupif.Field.Field(self.mesh, mupif.FieldID.FID_Material_number, mupif.ValueType.Scalar, PQ.getDimensionlessUnit(),
-                               time, values, fieldType=mupif.Field.FieldType.FT_cellBased)
+            return mupif.Field.Field(
+                self.mesh,
+                mupif.FieldID.FID_Material_number,
+                mupif.ValueType.Scalar,
+                PQ.getDimensionlessUnit(),
+                time,
+                values,
+                fieldType=mupif.Field.FieldType.FT_cellBased
+            )
         else:
             raise mupif.APIError.APIError('Unknown field ID')
 
@@ -272,7 +316,7 @@ class thermal(mupif.Model.Model):
         radius = min(self.xl, self.yl) * self.scaleInclusion
         xCenter = self.xl / 2.  # domain center
         yCenter = self.yl / 2.  # domain center
-        if (math.sqrt((xCell - xCenter) * (xCell - xCenter) + (yCell - yCenter) * (yCell - yCenter)) < radius):
+        if math.sqrt((xCell - xCenter) * (xCell - xCenter) + (yCell - yCenter) * (yCell - yCenter)) < radius:
             return True
             # print (xCell,yCell)
         return False
@@ -283,7 +327,7 @@ class thermal(mupif.Model.Model):
         self.volume = 0.0
         self.integral = 0.0
 
-        numNodes = mesh.getNumberOfVertices()
+        # numNodes = mesh.getNumberOfVertices()
         numElements = mesh.getNumberOfCells()
         ndofs = 4
 
@@ -321,8 +365,7 @@ class thermal(mupif.Model.Model):
         for e in mesh.cells():
             A_e = self.compute_elem_conductivity(e, self.conductivity.getValue(tstep.getTime()))
 
-            # #Assemble
-            # print e, self.loc[c[e.number-1,0]],self.loc[c[e.number-1,1]], self.loc[c[e.number-1,2]], self.loc[c[e.number-1,3]]
+            # Assemble
             for i in range(ndofs):  # loop of dofs
                 ii = self.loc[c[e.number - 1, i]]  # code number
                 if ii < self.neq:  # unknown to be solved
@@ -353,7 +396,7 @@ class thermal(mupif.Model.Model):
 
             n1 = elem.getVertices()[side]
             # print n1
-            if (side == 3):
+            if side == 3:
                 n2 = elem.getVertices()[0]
             else:
                 n2 = elem.getVertices()[side + 1]
@@ -384,23 +427,23 @@ class thermal(mupif.Model.Model):
             # #Assemble
             loci = [n1.number, n2.number]
             # print loci
-            for i in range(2):  # loop nb of dofs
-                ii = self.loc[loci[i]]
+            for i_i in range(2):  # loop nb of dofs
+                ii = self.loc[loci[i_i]]
                 if ii < self.neq:
                     for j in range(2):
                         jj = self.loc[loci[j]]
                         if jj < self.neq:
                             # print "Assembling bc ", ii, jj, boundary_lhs[i,j]
-                            kuu[ii, jj] += boundary_lhs[i, j]
-                    b[ii] += boundary_rhs[i]
+                            kuu[ii, jj] += boundary_lhs[i_i, j]
+                    b[ii] += boundary_rhs[i_i]
 
         self.r = np.zeros(self.pneq)  # reactions
 
         # solve linear system
         log.info("Solving thermal problem")
-        # self.rhs = np.zeros(self.neq)
-        self.rhs = b - np.dot(kup, self.T[self.neq:self.neq + self.pneq])
-        self.T[:self.neq] = np.linalg.solve(kuu, self.rhs)
+
+        rhs = b - np.dot(kup, self.T[self.neq:self.neq + self.pneq])
+        self.T[:self.neq] = np.linalg.solve(kuu, rhs)
         self.r = np.dot(kup.transpose(), self.T[:self.neq]) + np.dot(kpp, self.T[self.neq:self.neq + self.pneq])
         # print (self.r)
 
@@ -410,6 +453,8 @@ class thermal(mupif.Model.Model):
     def compute_B(self, elem, lc):
         # computes gradients of shape functions of given element
         vertices = elem.getVertices()
+        dNdksi = None
+        B = np.zeros((2, 2))
 
         if isinstance(elem, mupif.Cell.Quad_2d_lin):
             c1 = vertices[0].coords
@@ -431,7 +476,6 @@ class thermal(mupif.Model.Model):
             ksi = lc[0]
             eta = lc[1]
 
-            B = np.zeros((2, 2))
             B[0, 0] = (1. / elem.getTransformationJacobian(lc)) * (B22 + ksi * C22)
             B[0, 1] = (1. / elem.getTransformationJacobian(lc)) * (-B21 - eta * C21)
             B[1, 0] = (1. / elem.getTransformationJacobian(lc)) * (-B12 - ksi * C12)
@@ -447,15 +491,14 @@ class thermal(mupif.Model.Model):
             dNdksi[1, 2] = -0.25 * (1. - ksi)
             dNdksi[1, 3] = -0.25 * (1. + ksi)
 
-            Grad = np.zeros((2, 4))
         elif isinstance(elem, mupif.Cell.Triangle_2d_lin):
             c1 = vertices[0].coords
             c2 = vertices[1].coords
             c3 = vertices[2].coords
             # local coords
-            ksi = lc[0]
-            eta = lc[1]
-            B = np.zeros((2, 2))
+            # ksi = lc[0]
+            # eta = lc[1]
+
             B[0, 0] = (1. / elem.getTransformationJacobian(lc)) * (c2[1] - c3[1])
             B[0, 1] = (1. / elem.getTransformationJacobian(lc)) * (-c1[1] + c3[1])
             B[1, 0] = (1. / elem.getTransformationJacobian(lc)) * (-c2[0] + c3[0])
@@ -467,7 +510,6 @@ class thermal(mupif.Model.Model):
             dNdksi[1, 0] = 0
             dNdksi[1, 1] = 1
             dNdksi[1, 2] = -1
-            Grad = np.zeros((2, 4))
 
         Grad = np.dot(B, dNdksi)
         # print Grad
@@ -477,7 +519,7 @@ class thermal(mupif.Model.Model):
         # compute element conductivity matrix
         numVert = e.getNumberOfVertices()
         A_e = np.zeros((numVert, numVert))
-        b_e = np.zeros((numVert, 1))
+        # b_e = np.zeros((numVert, 1))
         rule = mupif.IntegrationRule.GaussIntegrationRule()
 
         ngp = rule.getRequiredNumberOfPoints(e.getGeometryType(), 2)
@@ -494,12 +536,12 @@ class thermal(mupif.Model.Model):
             dv = detJ * p[1]
             # print "dv :",dv
 
-            N = np.zeros((1, numVert))
-            tmp = e._evalN(p[0])
-            N = np.asarray(tmp)
+            # N = np.zeros((1, numVert))
+            # tmp = e._evalN(p[0])
+            # N = np.asarray(tmp)
             # print "N :",N
 
-            x = e.loc2glob(p[0])
+            # x = e.loc2glob(p[0])
             # print "global coords :", x
 
             # conductivity
@@ -508,10 +550,9 @@ class thermal(mupif.Model.Model):
                 if self.isInclusion(e):
                     k = 0.001
 
-            Grad = np.zeros((2, numVert))
+            # Grad = np.zeros((2, numVert))
             Grad = self.compute_B(e, p[0])
             # print "Grad :",Grad
-            K = np.zeros((numVert, numVert))
             K = k * dv * (np.dot(Grad.T, Grad))
 
             # Conductivity matrix
@@ -532,8 +573,14 @@ class thermal(mupif.Model.Model):
                         sumQ -= self.r[ipneq - self.neq]
             eff_conductivity = sumQ / self.yl * self.xl / (
                         self.dirichletBCs[(self.ny + 1) * (self.nx + 1) - 1] - self.dirichletBCs[0])
-            return mupif.Property.ConstantProperty(eff_conductivity, mupif.PropertyID.PID_effective_conductivity,
-                                             mupif.ValueType.Scalar, 'W/m/K', time, 0)
+            return mupif.Property.ConstantProperty(
+                eff_conductivity,
+                mupif.PropertyID.PID_effective_conductivity,
+                mupif.ValueType.Scalar,
+                'W/m/K',
+                time,
+                0
+            )
         else:
             raise mupif.APIError.APIError('Unknown property ID')
 
@@ -542,29 +589,36 @@ class thermal(mupif.Model.Model):
             # remember the mapped value
             self.conductivity = property.inUnitsOf('W/m/K')
             # log.info("Assigning effective conductivity %f" % self.conductivity.getValue() )
+
         elif property.getPropertyID() == mupif.PropertyID.PID_Temperature:
+
             # convection
-            for edge_id in range(1, 5):
+            edge_ids = ['Cauchy bottom', 'Cauchy right', 'Cauchy top', 'Cauchy left']
+            for edge_id in edge_ids:
                 if objectID == edge_id:
+                    edge_index = edge_ids.index(edge_id)+1
                     edge_found = False
                     for edge in self.convectionModelEdges:
-                        if edge[0] == edge_id:
+                        if edge[0] == edge_index:
                             idx = self.convectionModelEdges.index(edge)
-                            self.convectionModelEdges[idx] = (edge_id, property.getValue()[0], edge[2])
+                            self.convectionModelEdges[idx] = (edge_index, property.getValue()[0], edge[2])
                             edge_found = True
                     if not edge_found:
-                        self.convectionModelEdges.append((edge_id, property.getValue()[0], 1.))
+                        self.convectionModelEdges.append((edge_index, property.getValue()[0], 1.))
+
             # Dirichlet
-            for edge_id in range(1, 5):
-                if objectID == edge_id+10:
+            edge_ids = ['Dirichlet bottom', 'Dirichlet right', 'Dirichlet top', 'Dirichlet left']
+            for edge_id in edge_ids:
+                if objectID == edge_id:
+                    edge_index = edge_ids.index(edge_id)+1
                     edge_found = False
                     for edge in self.dirichletModelEdges:
-                        if edge[0] == edge_id:
+                        if edge[0] == edge_index:
                             idx = self.dirichletModelEdges.index(edge)
-                            self.dirichletModelEdges[idx] = (edge_id, property.getValue()[0])
+                            self.dirichletModelEdges[idx] = (edge_index, property.getValue()[0])
                             edge_found = True
                     if not edge_found:
-                        self.dirichletModelEdges.append((edge_id, property.getValue()[0]))
+                        self.dirichletModelEdges.append((edge_index, property.getValue()[0]))
 
         else:
             raise mupif.APIError.APIError('Unknown property ID')
@@ -588,29 +642,35 @@ class thermal_nonstat(thermal):
             'Name': 'Non-stationary thermal problem',
             'ID': 'NonStatThermo-1',
             'Description': 'Non-stationary heat conduction using finite elements on a rectangular domain',
+            'Version_date': '1.0.0, Feb 2019',
             'Representation': 'Finite volumes',
             'Geometry': '2D rectangle',
             'Boundary_conditions': 'Dirichlet, Neumann',
             'Inputs': [
-                {'Name': 'top edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 3},
-                {'Name': 'top edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 13},
-                {'Name': 'bottom edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 1},
-                {'Name': 'bottom edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 11},
-                {'Name': 'left edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 4},
-                {'Name': 'left edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 14},
-                {'Name': 'right edge temperature Cauchy', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 2},
-                {'Name': 'right edge temperature Dirichlet', 'Type': 'mupif.Property', 'required': False,
-                 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 12}
+                {
+                    'Name': 'edge temperature',
+                    'Type': 'mupif.Property',
+                    'required': False,
+                    'Type_ID': 'mupif.PropertyID.PID_Temperature',
+                    'Obj_ID': [
+                        'Cauchy top',
+                        'Cauchy bottom',
+                        'Cauchy left',
+                        'Cauchy right',
+                        'Dirichlet top',
+                        'Dirichlet bottom',
+                        'Dirichlet left',
+                        'Dirichlet right'
+                    ]
+                }
             ],
             'Outputs': [
-                {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'mupif.Field', 'required': False}
+                {
+                    'Name': 'temperature',
+                    'Type_ID': 'mupif.FieldID.FID_Temperature',
+                    'Type': 'mupif.Field',
+                    'required': False
+                }
             ],
             'Solver': {
                 'Software': 'own',
@@ -641,10 +701,16 @@ class thermal_nonstat(thermal):
             }
         }
         super(thermal_nonstat, self).__init__(metaData)
+        self.mesh = None
         self.capacity = 1.0  # J/kg/K
         self.density = 1.0
         self.Tau = 0.5
         self.init = True
+        self.kuu = None
+        self.kpp = None
+        self.kup = None
+        self.P = None
+        self.Tp = None
 
     def initialize(self, file='', workdir='', metaData={}, validateMetaData=False, **kwargs):
         super().initialize(file, workdir, metaData, validateMetaData, **kwargs)
@@ -684,7 +750,7 @@ class thermal_nonstat(thermal):
             dv = detJ * p[1]
             # print "dv :",dv
 
-            N = np.zeros((1, numVert))
+            # N = np.zeros((1, numVert))
             tmp = e._evalN(p[0])
             N = np.asarray(tmp)
             # print "N :",N
@@ -694,7 +760,7 @@ class thermal_nonstat(thermal):
                 if self.isInclusion(e):
                     c = 0.001
 
-            C = np.zeros((numVert, numVert))
+            # C = np.zeros((numVert, numVert))
             C = c * dv * (np.dot(N.T, N))
 
             # Conductivity matrix
@@ -711,7 +777,7 @@ class thermal_nonstat(thermal):
         if tstep.getNumber() == 0:  # assign mesh only for 0th time step
             return
 
-        numNodes = mesh.getNumberOfVertices()
+        # numNodes = mesh.getNumberOfVertices()
         numElements = mesh.getNumberOfCells()
 
         ndofs = 3 if self.tria else 4
@@ -732,7 +798,7 @@ class thermal_nonstat(thermal):
                 c[e, i] = self.mesh.getVertex(mesh.getCell(e).vertices[i]).label
         # print ('connectivity :',c)
 
-        if (self.init):  # do only once
+        if self.init:  # do only once
             # Global matrix and global vector -> assuming constant time step size
             self.kuu = np.zeros((self.neq, self.neq))
             self.kpp = np.zeros((self.pneq, self.pneq))
@@ -746,8 +812,7 @@ class thermal_nonstat(thermal):
                 C_e = self.compute_elem_capacity(e)
                 A_e = K_e * self.Tau + C_e / dt
                 P_e = np.subtract(C_e / dt, K_e * (1. - self.Tau))
-                # #Assemble
-                # print e, self.loc[c[e.number-1,0]],self.loc[c[e.number-1,1]], self.loc[c[e.number-1,2]], self.loc[c[e.number-1,3]]
+                # Assemble
                 for i in range(ndofs):  # loop of dofs
                     ii = self.loc[c[e.number - 1, i]]  # code number
                     if ii < self.neq:  # unknown to be solved
@@ -776,7 +841,7 @@ class thermal_nonstat(thermal):
                 elem = mesh.getCell(i[0])
                 side = i[1]
                 h = i[2]
-                Te = i[3]
+                # Te = i[3]
                 # print ("h:%f Te:%f" % (h, Te))
 
                 n1 = elem.getVertices()[side]
@@ -803,18 +868,18 @@ class thermal_nonstat(thermal):
                 # Assemble
                 loci = [n1.number, n2.number]
                 # print loci
-                for i in range(2):  # loop nb of dofs
-                    ii = self.loc[loci[i]]
+                for i_i in range(2):  # loop nb of dofs
+                    ii = self.loc[loci[i_i]]
                     if ii < self.neq:
                         for j in range(2):
                             jj = self.loc[loci[j]]
                             if jj < self.neq:
-                                # print "Assembling bc ", ii, jj, boundary_lhs[i,j]
-                                self.kuu[ii, jj] += boundary_lhs[i, j] * self.Tau
+                                # print "Assembling bc ", ii, jj, boundary_lhs[i_i,j]
+                                self.kuu[ii, jj] += boundary_lhs[i_i, j] * self.Tau
 
                     for j in range(2):
                         jj = self.loc[loci[j]]
-                        self.P[ii, jj] += boundary_lhs[i, j] * self.Tau
+                        self.P[ii, jj] += boundary_lhs[i_i, j] * self.Tau
 
             self.T = np.zeros(self.neq + self.pneq)  # vector of current prescribed temperatures
             self.b = np.zeros(self.neq)  # rhs vector
@@ -859,10 +924,10 @@ class thermal_nonstat(thermal):
             # #Assemble
             loci = [n1.number, n2.number]
             # print loci
-            for i in range(2):  # loop nb of dofs
-                ii = self.loc[loci[i]]
+            for i_i in range(2):  # loop nb of dofs
+                ii = self.loc[loci[i_i]]
                 if ii < self.neq:
-                    self.b[ii] += boundary_rhs[i]
+                    self.b[ii] += boundary_rhs[i_i]
 
         rhs = self.b * self.Tau + self.bp * (1 - self.Tau)
         # add rhs due to previous state (C/dt-K(1-Tau))*r_{i-1}
@@ -893,14 +958,24 @@ class mechanical(mupif.Model.Model):
             'Name': 'Plane stress linear elastic',
             'ID': 'Mechanical-1',
             'Description': 'Plane stress problem with linear elastic thermo-elastic material',
+            'Version_date': '1.0.0, Feb 2019',
             'Geometry': '2D rectangle',
             'Boundary_conditions': 'Dirichlet',
             'Inputs': [
-                {'Name': 'temperature', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Type': 'mupif.Field', 'required': True}
+                {
+                    'Name': 'temperature',
+                    'Type_ID': 'mupif.FieldID.FID_Temperature',
+                    'Type': 'mupif.Field',
+                    'required': True
+                }
             ],
             'Outputs': [
-                {'Name': 'displacement', 'Type_ID': 'mupif.FieldID.FID_Displacement',
-                 'Type': 'mupif.Field', 'required': False}
+                {
+                    'Name': 'displacement',
+                    'Type_ID': 'mupif.FieldID.FID_Displacement',
+                    'Type': 'mupif.Field',
+                    'required': False
+                }
             ],
             'Solver': {
                 'Software': 'own',
@@ -941,6 +1016,20 @@ class mechanical(mupif.Model.Model):
 
         self.dirichletModelEdges = []
         self.loadModelEdges = []
+
+        self.xl = None
+        self.yl = None
+        self.nx = None
+        self.ny = None
+
+        self.mesh = None
+        self.dirichletBCs = None
+        self.loadBC = None
+        self.loc = None
+        self.neq = 0
+        self.volume = 0.0
+        self.integral = 0.0
+        self.T = None
 
     def initialize(self, file='', workdir='', metaData={}, validateMetaData=False, **kwargs):
         super().initialize(file, workdir, metaData, validateMetaData, **kwargs)
@@ -1004,17 +1093,16 @@ class mechanical(mupif.Model.Model):
 
     def prepareTask(self):
 
-        self.mesh = mupif.Mesh.UnstructuredMesh()
+        # self.mesh = mupif.Mesh.UnstructuredMesh()
         # generate a simple mesh here
         # self.xl = 0.5 # domain (0..xl)(0..yl)
         # self.yl = 0.3
         # self.nx = 10 # number of elements in x direction
         # self.ny = 10 # number of elements in y direction
-        self.dx = self.xl / self.nx
-        self.dy = self.yl / self.ny
+        # self.dx = self.xl / self.nx
+        # self.dy = self.yl / self.ny
         self.mesh = meshgen.meshgen((0., 0.), (self.xl, self.yl), self.nx, self.ny)
 
-        k = 1
         #
         # Model edges
         #     ----------3----------
@@ -1081,7 +1169,14 @@ class mechanical(mupif.Model.Model):
                     else:
                         values.append((self.T[self.loc[i, 0], 0], self.T[self.loc[i, 1], 0], 0.0))
 
-            return mupif.Field.Field(self.mesh, mupif.FieldID.FID_Displacement, mupif.ValueType.Vector, 'm', time, values)
+            return mupif.Field.Field(
+                self.mesh,
+                mupif.FieldID.FID_Displacement,
+                mupif.ValueType.Vector,
+                'm',
+                time,
+                values
+            )
         else:
             raise mupif.APIError.APIError('Unknown field ID')
 
@@ -1099,7 +1194,7 @@ class mechanical(mupif.Model.Model):
         self.volume = 0.0
         self.integral = 0.0
 
-        numNodes = mesh.getNumberOfVertices()
+        # numNodes = mesh.getNumberOfVertices()
         numElements = mesh.getNumberOfCells()
         elemNodes = 4
         nodalDofs = 2
@@ -1144,20 +1239,20 @@ class mechanical(mupif.Model.Model):
                 dv = detJ * p[1]
                 # print "dv :",dv
 
-                N = np.zeros((1, elemNodes))
-                tmp = e._evalN(p[0])
-                N = np.asarray(tmp)
+                # N = np.zeros((1, elemNodes))
+                # tmp = e._evalN(p[0])
+                # N = np.asarray(tmp)
                 # print "N :",N
 
                 x = e.loc2glob(p[0])
                 # print "global coords :", x
 
                 k = 1.
-                Grad = np.zeros((3, elemDofs))
+                # Grad = np.zeros((3, elemDofs))
                 Grad = self.compute_B(e, p[0])
                 D = self.compute_D(self.E, self.nu)
                 # print "Grad :",Grad
-                K = np.zeros((elemDofs, elemDofs))
+                # K = np.zeros((elemDofs, elemDofs))
                 K = k * (np.dot(Grad.T, np.dot(D, Grad)))
 
                 # Stiffness matrix
@@ -1176,19 +1271,18 @@ class mechanical(mupif.Model.Model):
             # print "A_e :",A_e
             # print "b_e :",b_e
 
-            # #Assemble
-            # print e, self.loc[c[e.number-1,0]],self.loc[c[e.number-1,1]], self.loc[c[e.number-1,2]], self.loc[c[e.number-1,3]]
+            # Assemble
             for i in range(elemNodes):  # loop nb of dofs
-                for id in range(nodalDofs):
-                    ii = int(self.loc[c[e.number - 1, i], id])
-                    if (ii >= 0):
+                for idx in range(nodalDofs):
+                    ii = int(self.loc[c[e.number - 1, i], idx])
+                    if ii >= 0:
                         for j in range(elemNodes):
                             for jd in range(nodalDofs):
                                 jj = int(self.loc[c[e.number - 1, j], jd])
-                                if (jj >= 0):
+                                if jj >= 0:
                                     # print "Assembling", ii, jj
-                                    A[ii, jj] += A_e[i * nodalDofs + id, j * nodalDofs + jd]
-                        b[ii] += b_e[i * nodalDofs + id]
+                                    A[ii, jj] += A_e[i * nodalDofs + idx, j * nodalDofs + jd]
+                        b[ii] += b_e[i * nodalDofs + idx]
 
                         # print A
         # print b
@@ -1204,7 +1298,7 @@ class mechanical(mupif.Model.Model):
 
             n1 = elem.getVertices()[side]
             # print n1
-            if (side == 3):
+            if side == 3:
                 n2 = elem.getVertices()[0]
             else:
                 n2 = elem.getVertices()[side + 1]
@@ -1222,11 +1316,11 @@ class mechanical(mupif.Model.Model):
             # #Assemble
             loci = [n1.number, n2.number]
             # print loci
-            for i in range(2):  # loop nb of nodes
-                for id in range(2):  # loop over dofs
-                    ii = self.loc[loci[i], id]
+            for i_i in range(2):  # loop nb of nodes
+                for idx in range(2):  # loop over dofs
+                    ii = self.loc[loci[i_i], idx]
                     if ii >= 0:
-                        b[ii] += boundary_rhs[i, id]
+                        b[ii] += boundary_rhs[i_i, idx]
 
                         # print A
         # print b
@@ -1274,7 +1368,7 @@ class mechanical(mupif.Model.Model):
         dNdksi[1, 2] = -0.25 * (1. - ksi)
         dNdksi[1, 3] = -0.25 * (1. + ksi)
 
-        Grad = np.zeros((2, 4))
+        # Grad = np.zeros((2, 4))
         Grad = np.dot(B, dNdksi)
 
         B = np.zeros((3, 8))
@@ -1314,4 +1408,3 @@ class mechanical(mupif.Model.Model):
 
     def getApplicationSignature(self):
         return "Mechanical-demo-solver, ver 1.0"
-

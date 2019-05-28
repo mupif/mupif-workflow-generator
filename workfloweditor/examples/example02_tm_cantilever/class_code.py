@@ -17,8 +17,8 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
         self.setMetadata('Description', '')
         self.setMetadata('Model_refs_ID', [])
         self.updateMetadata(metaData)
-        self.updateMetadata({'Inputs': [{'Name': 'top_temperature', 'Type': 'mupif.Property', 'required': True, 'description': '', 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Object_ID': 'top_temperature', 'ID': 0, 'Units': '', 'Required': True}]})
-        self.updateMetadata({'Outputs': [{'Name': 'temperature', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Object_ID': 'temperature', 'ID': 0, 'Units': '', 'Required': False}, {'Name': 'displacement', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Displacement', 'Object_ID': 'displacement', 'ID': 0, 'Units': '', 'Required': False}]})
+        self.updateMetadata({'Inputs': [{'Name': 'top_temperature', 'Type': 'mupif.Property', 'required': True, 'description': '', 'Type_ID': 'mupif.PropertyID.PID_Temperature', 'Obj_ID': ['top_temperature'], 'ID': 0, 'Units': '', 'Required': True}]})
+        self.updateMetadata({'Outputs': [{'Name': 'temperature', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Temperature', 'Obj_ID': ['temperature'], 'ID': 0, 'Units': '', 'Required': False}, {'Name': 'displacement', 'Type': 'mupif.Field', 'required': False, 'description': '', 'Type_ID': 'mupif.FieldID.FID_Displacement', 'Obj_ID': ['displacement'], 'ID': 0, 'Units': '', 'Required': False}]})
     
         # initialization code of external input
         self.external_input_1 = None
@@ -94,9 +94,9 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
     def solveStep(self, tstep, stageID=0, runInBackground=False):
         
         # execution code of model_1 (thermal_nonstat)
-        self.model_1.set(self.external_input_1, 3)
-        self.model_1.set(self.constant_property_1, 11)
-        self.model_1.set(self.constant_property_2, 14)
+        self.model_1.set(self.external_input_1, 'Cauchy top')
+        self.model_1.set(self.constant_property_1, 'Dirichlet bottom')
+        self.model_1.set(self.constant_property_2, 'Dirichlet left')
         self.model_1.solveStep(tstep)
         
         # execution code of model_2 (mechanical)

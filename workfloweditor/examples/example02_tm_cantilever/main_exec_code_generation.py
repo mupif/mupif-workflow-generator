@@ -58,9 +58,9 @@ if __name__ == '__main__':
     cfq2.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("target_time"))
     cfq3.getDataSlotWithName("value").connectTo(timeloop.getDataSlotWithName("max_dt"))
 
-    model1.getDataSlotWithName("temperature").connectTo(export_block1.getDataSlotWithName("field"))
-    model1.getDataSlotWithName("displacement").connectTo(export_block2.getDataSlotWithName("field"))
-    model1.getDataSlotWithName("top_temperature").connectTo(property1.getDataSlotWithName("value"))
+    model1.getDataSlotWithName("temperature temperature").connectTo(export_block1.getDataSlotWithName("field"))
+    model1.getDataSlotWithName("displacement displacement").connectTo(export_block2.getDataSlotWithName("field"))
+    model1.getDataSlotWithName("top_temperature top_temperature").connectTo(property1.getDataSlotWithName("value"))
 
     print("\nWorkflowStructure:")
     workflow.printStructure()
