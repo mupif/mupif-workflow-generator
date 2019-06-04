@@ -95,7 +95,7 @@ class thermal(mupif.Model.Model):
         self.mesh = None
         self.morphologyType = None
         self.conductivity = mupif.Property.ConstantProperty(
-            1.,
+            (1.,),
             mupif.PropertyID.PID_effective_conductivity,
             mupif.ValueType.Scalar,
             'W/m/K'
@@ -363,7 +363,7 @@ class thermal(mupif.Model.Model):
 
         log.info("Assembling ...")
         for e in mesh.cells():
-            A_e = self.compute_elem_conductivity(e, self.conductivity.getValue(tstep.getTime()))
+            A_e = self.compute_elem_conductivity(e, self.conductivity.getValue(tstep.getTime())[0])
 
             # Assemble
             for i in range(ndofs):  # loop of dofs
@@ -808,7 +808,7 @@ class thermal_nonstat(thermal):
 
             log.info("Assembling ...")
             for e in mesh.cells():
-                K_e = self.compute_elem_conductivity(e, self.conductivity.getValue(tstep.getTime()))
+                K_e = self.compute_elem_conductivity(e, self.conductivity.getValue(tstep.getTime())[0])
                 C_e = self.compute_elem_capacity(e)
                 A_e = K_e * self.Tau + C_e / dt
                 P_e = np.subtract(C_e / dt, K_e * (1. - self.Tau))

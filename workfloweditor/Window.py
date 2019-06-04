@@ -23,12 +23,6 @@ class Window(QtWidgets.QMainWindow):
         self.setWindowTitle("MuPIF Workflow Generator")
         # self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
 
-        # extractAction = QtWidgets.QAction("GET TO THE CHOPPAH!!!")
-        # extractAction.setShortcut("Ctrl+Q")
-        # extractAction.setStatusTip('Leave The App')
-        # extractAction.triggered.connect(self.close_application)
-        # def _extractAction():
-        #     sys.exit()
         self.widget = GraphWidget.GraphWidget(self)
         self.resizeEvent(None)
 
@@ -121,9 +115,10 @@ class Window(QtWidgets.QMainWindow):
                     self.getApplication().getRealWorkflow().saveClassCodeToFile(file_path)
             else:
                 print("Workflow.checkConsistency() returned False")
-                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
-                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
-                                            "DataSlots are connected.")
+                QtWidgets.QMessageBox.about(
+                    self,
+                    "Workflow consistency error",
+                    "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected.")
 
         def _show_class_code():
             if self.getApplication().getRealWorkflow().checkConsistency(execution=False):
@@ -136,9 +131,10 @@ class Window(QtWidgets.QMainWindow):
                 self.code_editor.show()
             else:
                 print("Workflow.checkConsistency() returned False")
-                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
-                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
-                                            "DataSlots are connected.")
+                QtWidgets.QMessageBox.about(
+                    self,
+                    "Workflow consistency error",
+                    "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected.")
 
         def _generate_execution_code():
             if self.getApplication().getRealWorkflow().checkConsistency(execution=True):
@@ -153,10 +149,11 @@ class Window(QtWidgets.QMainWindow):
                     self.getApplication().getRealWorkflow().saveExecutionCodeToFile(file_path)
             else:
                 print("Workflow.checkConsistency() returned False")
-                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
-                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
-                                            "DataSlots are connected.\nExecution Workflow also cannot contain external "
-                                            "DataSlots.")
+                QtWidgets.QMessageBox.about(
+                    self,
+                    "Workflow consistency error",
+                    "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected."
+                    "\nExecution Workflow also cannot contain external DataSlots.")
 
         def _show_execution_code():
             if self.getApplication().getRealWorkflow().checkConsistency(execution=True):
@@ -169,10 +166,11 @@ class Window(QtWidgets.QMainWindow):
                 self.code_editor.show()
             else:
                 print("Workflow.checkConsistency() returned False")
-                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
-                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
-                                            "DataSlots are connected.\nExecution Workflow also cannot contain external "
-                                            "DataSlots.")
+                QtWidgets.QMessageBox.about(
+                    self,
+                    "Workflow consistency error",
+                    "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected."
+                    "\nExecution Workflow also cannot contain external DataSlots.")
 
         def _run_execution_code():
             if self.getApplication().getRealWorkflow().checkConsistency(execution=True):
@@ -182,10 +180,11 @@ class Window(QtWidgets.QMainWindow):
                 os.remove(file_path)
             else:
                 print("Workflow.checkConsistency() returned False")
-                QtWidgets.QMessageBox.about(self, "Workflow consistency error",
-                                            "Workflow.checkConsistency() returned False\nCheck whether all Compulsory "
-                                            "DataSlots are connected.\nExecution Workflow also cannot contain external "
-                                            "DataSlots.")
+                QtWidgets.QMessageBox.about(
+                    self,
+                    "Workflow consistency error",
+                    "Workflow.checkConsistency() returned False\nCheck whether all Compulsory DataSlots are connected."
+                    "\nExecution Workflow also cannot contain external DataSlots.")
 
         main_menu.setNativeMenuBar(False)
         workflow_menu = main_menu.addMenu('Workflow')
@@ -242,16 +241,16 @@ class Window(QtWidgets.QMainWindow):
         self.apis_menu.addAction(apis_action_load_from_file)
         #
         self.apis_list_of_models = self.apis_menu.addMenu('List of available APIs')
-        for api in self.getApplication().getRealWorkflow().getListOfModels():
-            action = QtWidgets.QAction(api.__name__, self)
+        for apiname in self.getApplication().getRealWorkflow().getListOfModelClassnames():
+            action = QtWidgets.QAction(apiname, self)
             self.apis_list_of_models.addAction(action)
 
         self.show()
 
     def updateMenuListOfAPIs(self):
         self.apis_list_of_models.clear()
-        for api in workflowgenerator.BlockWorkflow.BlockWorkflow.getListOfModels():
-            action = QtWidgets.QAction(api.__name__, self)
+        for apiname in workflowgenerator.BlockWorkflow.BlockWorkflow.getListOfModelClassnames():
+            action = QtWidgets.QAction(apiname, self)
             self.apis_list_of_models.addAction(action)
 
     def updateMenuListOfBlocks(self):
