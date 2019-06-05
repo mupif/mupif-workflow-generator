@@ -172,10 +172,9 @@ class DataSlot(QtWidgets.QGraphicsItem):
         if data_link not in scene.items():
             scene.addItem(data_link)
 
-    def removeDataConnection (self, data_link):
-        """Remove the given DataLink from the internal tracking list.
-
-        If it is unknown, do nothing. Also remove it from the QGraphicsScene.
+    def removeDataConnection(self, data_link):
+        """
+        :param DataLink data_link:
         """
         self.dataLinks.remove(data_link)
         scene = self.scene()
@@ -324,25 +323,38 @@ class DataSlot(QtWidgets.QGraphicsItem):
             temp = QtWidgets.QInputDialog()
             new_name, ok_pressed = QtWidgets.QInputDialog.getText(temp, "Change name of the slot", "", text=self.name)
             if ok_pressed:
-                self.rename(new_name)
-                self.owner.callUpdatePositionOfWholeWorkflow()
+                self.getParentBlock().getRealBlock().getWorkflowBlock().modificationQuery(
+                    'set_dataslot_name',
+                    [self.getUID(), new_name]
+                )
+                self.getParentBlock().getApplication().reGenerateAll()
 
         if self.external:
             rename_slot_action = sub_menu.addAction("Rename")
             rename_slot_action.triggered.connect(_rename)
 
         def _delete():
-            self.destroy()
-            self.owner.callUpdatePositionOfWholeWorkflow()
+            self.getParentBlock().getRealBlock().getWorkflowBlock().modificationQuery(
+                'delete_dataslot',
+                self.getUID()
+            )
+            self.getParentBlock().getApplication().reGenerateAll()
 
-        delete_slot_action = sub_menu.addAction("Delete")
-        delete_slot_action.triggered.connect(_delete)
+        if self.external:
+            delete_slot_action = sub_menu.addAction("Delete")
+            delete_slot_action.triggered.connect(_delete)
 
         sub_menu_2 = menu.addMenu("Delete dataLink")
 
-        def _delete_data_link(idx):
-            print(idx)
-            self.dataLinks[idx].destroy()
+        def _delete_data_link(datalink_id):
+            data_link_to_delete = self.dataLinks[datalink_id]
+            self.getParentBlock().getRealBlock().getWorkflowBlock().modificationQuery(
+                'delete_datalink',
+                [self.getUID(), data_link_to_delete.giveTheOtherSlot(self).getUID()]
+            )
+            self.getParentBlock().getApplication().reGenerateAll()
+
+            self.getParentBlock().getApplication().reGenerateAll()
 
         data_links = self.dataLinks
         idx = 0
@@ -512,6 +524,12 @@ class DataLink(QtWidgets.QGraphicsPathItem):
 
     def __repr__(self):
         return self.__str__()
+
+    def getUID(self):
+        return self.uuid
+
+    def setUID(self, val):
+        self.uuid = val
 
     def highlight(self, highlight):
         if highlight:

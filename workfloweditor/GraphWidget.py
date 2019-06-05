@@ -76,26 +76,9 @@ class GraphWidget (QtWidgets.QWidget):
     def getWorkflowBlock(self):
         return self.workflow
 
-    def addSceneMenuActions(self, menu):
-        """Add scene specific actions like hold/fetch/save/load."""
-        subMenu = menu.addMenu("Scene")
-
-        clearSceneAction = subMenu.addAction("Clear")
-        clearSceneAction.triggered.connect(self.clearScene)
-
-        def _showAllElements():
-            items = self.scene.items()
-            for item in items:
-                item.setVisible(True)
-
-        showAllElements = subMenu.addAction("Show all elements")
-        showAllElements.triggered.connect(_showAllElements)
-
     def contextMenuEvent(self, event):
         """Show a menu to create registered Nodes."""
         menu = QtWidgets.QMenu(self)
-        # self.addNodesMenuActions(menu)
-        self.addSceneMenuActions(menu)
         menu.exec(event.globalPos())
 
         super(GraphWidget, self).contextMenuEvent(event)
