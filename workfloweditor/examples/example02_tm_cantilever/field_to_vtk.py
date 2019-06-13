@@ -11,7 +11,7 @@ class field_export_to_VTK(mupif.Application.Application):
                               'ID': 'simpleVtkExport',
                               'Version_date': '1.0 1.5.2019',
                               'Inputs': [
-                                  {'Name': 'field', 'Type': 'mupif.Field', 'required': False,
+                                  {'Name': 'field', 'Type': 'mupif.Field', 'Required': False,
                                    'Type_ID': 'mupif.FieldID.FID_Temperature'}
                               ],
                               'Outputs': []})
