@@ -71,6 +71,10 @@ class Window(QtWidgets.QMainWindow):
                     self.getApplication().getRealWorkflow().constructFromJSON(j_data)
                     self.getApplication().reGenerateAll()
 
+        def _load_default_models():
+            self.getApplication().getRealWorkflow().loadDefaultModels()
+            self.updateMenuListOfAPIs()
+
         def _load_models():
             file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self,
@@ -226,6 +230,7 @@ class Window(QtWidgets.QMainWindow):
         workflow_menu.addAction(workflow_action_load_from_file)
         #
         self.blocks_menu = main_menu.addMenu('Blocks')
+        #
         apis_action_load_custom_blocks_from_file = QtWidgets.QAction('Load custom Block from file', self)
         apis_action_load_custom_blocks_from_file.triggered.connect(_load_custom_standard_blocks)
         self.blocks_menu.addAction(apis_action_load_custom_blocks_from_file)
@@ -244,6 +249,10 @@ class Window(QtWidgets.QMainWindow):
         for apiname in self.getApplication().getRealWorkflow().getListOfModelClassnames():
             action = QtWidgets.QAction(apiname, self)
             self.apis_list_of_models.addAction(action)
+        #
+        apis_action_load_default_models = QtWidgets.QAction('Load COMPOSELECTOR models', self)
+        apis_action_load_default_models.triggered.connect(_load_default_models)
+        self.apis_menu.addAction(apis_action_load_default_models)
 
         self.show()
 
