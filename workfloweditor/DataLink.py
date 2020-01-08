@@ -12,6 +12,17 @@ windows = os.name == "nt"
 DELETE_MODIFIER_KEY = QtCore.Qt.AltModifier if windows else QtCore.Qt.ControlModifier
 
 
+def getLastStrAfterDot(val):
+    """
+    :param str val:
+    :return: str
+    """
+    if isinstance(val, str):
+        val_list = val.split('.')
+        return val_list[len(val_list)-1]
+    return str(val)
+
+
 class DataSlot(QtWidgets.QGraphicsItem):
     """
     Class describing input/output parameter of block
@@ -109,7 +120,7 @@ class DataSlot(QtWidgets.QGraphicsItem):
         self.w_tot = val
 
     def updateDisplayName(self):
-        self.displayName = "%s (%s)" % (self.name, self.type)
+        self.displayName = "%s (%s, %s)" % (self.name, self.type, getLastStrAfterDot(self.obj_type))
         self.owner.callUpdatePositionOfWholeWorkflow()
 
     def setType(self, val):

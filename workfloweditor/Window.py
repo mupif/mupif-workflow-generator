@@ -20,7 +20,7 @@ class Window(QtWidgets.QMainWindow):
         self.setGeometry(50, 50, 800, 1000)
         self.setMinimumWidth(300)
         self.setMinimumHeight(500)
-        self.setWindowTitle("MuPIF Workflow Generator")
+        self.setWindowTitle("MuPIF Workflow Editor")
         # self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
 
         self.widget = GraphWidget.GraphWidget(self)
@@ -180,7 +180,7 @@ class Window(QtWidgets.QMainWindow):
             if self.getApplication().getRealWorkflow().checkConsistency(execution=True):
                 file_path = './temporary_execution_script.py'
                 self.getApplication().getRealWorkflow().saveExecutionCodeToFile(file_path)
-                os.system("python3 %s" % file_path)
+                os.system("python %s" % file_path)
                 os.remove(file_path)
             else:
                 print("Workflow.checkConsistency() returned False")

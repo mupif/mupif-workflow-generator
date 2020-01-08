@@ -26,9 +26,6 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
         # __init__ code of constant_property_1 ()
         self.constant_property_1 = mupif.Property.ConstantProperty((0.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, 'degC', None, 0)
         
-        # __init__ code of constant_property_2 ()
-        self.constant_property_2 = mupif.Property.ConstantProperty((0.0,), mupif.PropertyID.PID_Temperature, mupif.ValueType.Scalar, 'degC', None, 0)
-        
         # __init__ code of model_1 (thermal_nonstat)
         self.model_1 = models.thermal_nonstat()
         
@@ -101,7 +98,7 @@ class MyProblemClassWorkflow(mupif.Workflow.Workflow):
         # execution code of model_1 (thermal_nonstat)
         self.model_1.set(self.external_input_1, 'Cauchy top')
         self.model_1.set(self.constant_property_1, 'Dirichlet bottom')
-        self.model_1.set(self.constant_property_2, 'Dirichlet left')
+        self.model_1.set(self.constant_property_1, 'Dirichlet left')
         self.model_1.solveStep(tstep)
         
         # execution code of model_2 (mechanical)

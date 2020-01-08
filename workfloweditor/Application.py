@@ -10,6 +10,8 @@ class Application:
     def __init__(self, workflow=None):
         self.app = QtWidgets.QApplication([])
         self.workflow = workflow
+        if self.workflow is None:
+            self.workflow = workflowgenerator.BlockWorkflow.BlockWorkflow()
         self.window = Window.Window(self)
 
     def run(self):

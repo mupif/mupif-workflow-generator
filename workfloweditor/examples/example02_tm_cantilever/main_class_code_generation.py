@@ -21,12 +21,12 @@ if __name__ == '__main__':
     property1.setUnits('degC')
     workflow.addBlock(property1)
 
-    property2 = workflowgenerator.BlockConstProperty.BlockConstProperty()
-    property2.setValue((0.,))
-    property2.setPropertyID('mupif.PropertyID.PID_Temperature')
-    property2.setValueType('mupif.ValueType.Scalar')
-    property2.setUnits('degC')
-    workflow.addBlock(property2)
+    # property2 = workflowgenerator.BlockConstProperty.BlockConstProperty()
+    # property2.setValue((0.,))
+    # property2.setPropertyID('mupif.PropertyID.PID_Temperature')
+    # property2.setValueType('mupif.ValueType.Scalar')
+    # property2.setUnits('degC')
+    # workflow.addBlock(property2)
 
     model_c_2 = models.thermal_nonstat()
     model_c_3 = models.mechanical()
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     model1.getDataSlotWithName('edge temperature Dirichlet bottom').connectTo(
         property1.getDataSlotWithName('value'))
     model1.getDataSlotWithName('edge temperature Dirichlet left').connectTo(
-        property2.getDataSlotWithName('value'))
+        property1.getDataSlotWithName('value'))
 
     print("\nWorkflowStructure:")
     workflow.printStructure()
